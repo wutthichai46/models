@@ -599,7 +599,7 @@ $ python launch_benchmark.py \
          --framework tensorflow \
          --data-location=/home/<user>/dataset/ImageNetData_directory \
          --mpi_num_processes=2 \
-         --mpi_num_processes_per_socket=1 \
+         --mpi_num_processes_per_socket=2 \
          --docker-image=intel/intel-optimized-tensorflow:2.3.0 \
          -a <half the amount of cores per socket or less>
 ```

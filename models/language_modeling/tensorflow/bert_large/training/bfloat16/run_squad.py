@@ -103,6 +103,12 @@ flags.DEFINE_integer("accum_steps", 1, "Accumulation steps for batch size greate
 flags.DEFINE_integer("predict_batch_size", 8,
                      "Total batch size for predictions.")
 
+flags.DEFINE_string("optimizer_type" , "lamb" , "Optimizer used for training Lamb or Adamw")
+
+flags.DEFINE_float("poly_power" , 1.0, "The Power of poly decay")
+
+flags.DEFINE_integer("start_warmup_step", 0, "The Starting step of warmup")
+
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
 
 flags.DEFINE_float("num_train_epochs", 3.0,
@@ -714,7 +720,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       total_loss = (start_loss + end_loss) / 2.0
 
       train_op = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, num_warmup_steps, accum_steps=1, use_tpu=False, use_multi_cpu=(is_mpi if FLAGS.mpi_workers_sync_gradients else 0))
+          total_loss, learning_rate, num_train_steps, num_warmup_steps, accum_steps=1, use_tpu=False, optimizer_type=FLAGS.optimizer_type, use_multi_cpu=(is_mpi if FLAGS.mpi_workers_sync_gradients else 0), poly_power=FLAGS.poly_power, start_warmup_step=FLAGS.start_warmup_step)
 
       log_hook = bf.logTheLossHook(total_loss, n=3)
       output_spec = tf.compat.v1.estimator.tpu.TPUEstimatorSpec(
@@ -774,10 +780,14 @@ def input_fn_builder(input_file, seq_length, is_training, drop_remainder):
 
     # For training, we want a lot of parallel reading and shuffling.
     # For eval, we want no shuffling and parallel reading doesn't matter.
-    d = tf.data.TFRecordDataset(input_file)
     if is_training:
+      d = tf.data.TFRecordDataset(input_file , num_parallel_reads = 4)
+      if hvd is not None: d=d.shard(hvd.size(), hvd.rank())
+      d = d.apply(tf.data.experimental.ignore_errors())
       d = d.repeat()
       d = d.shuffle(buffer_size=100)
+    else:
+      d = tf.data.TFRecordDataset(input_file)
 
     d = d.apply(
         tf.data.experimental.map_and_batch(

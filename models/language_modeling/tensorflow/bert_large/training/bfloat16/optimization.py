@@ -21,10 +21,29 @@ from __future__ import print_function
 import re
 import tensorflow as tf
 
+import lamb_optimizer_v1 as lamb_optimizer
 
+def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps=0, accum_steps=1, use_tpu=False,
+                     optimizer_type="lamb", use_multi_cpu=0, poly_power=1.0, start_warmup_step=0):
+  """Creates an optimizer training op.
 
-def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, accum_steps=1, use_tpu=False, use_multi_cpu=0):
-  """Creates an optimizer training op."""
+  Args: 
+    loss: The loss tensor that the optimizer minimizes.
+    init_lr: The initial learning rate.
+    num_train_steps: The number of train steps.
+    num_warmup_steps: The number of warmup steps.
+    accum_steps: The accumulation_gradients steps.
+    use_tpu: Always False, not used by this model.
+    optimizer_type: either "lamb" or "adamw". 
+    use_multi_cpu: a flag indicating whether horovod would be used.
+    poly_power: the learning rate polynomial decay using poly_power.
+    start_warmup_step: starting warmup step at which step.
+  
+  Returns:
+    The optimizer related ops. 
+  
+  """
+
   global_step = tf.compat.v1.train.get_or_create_global_step()
 
   learning_rate = tf.constant(value=init_lr, shape=[], dtype=tf.float32)
@@ -35,13 +54,19 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, accum_ste
       global_step,
       num_train_steps,
       end_learning_rate=0.0,
-      power=1.0,
+      power=poly_power,
       cycle=False)
 
   # Implements linear warmup. I.e., if global_step < num_warmup_steps, the
   # learning rate will be `global_step/num_warmup_steps * init_lr`.
+  # New Learning Rate = (global_step - start_warmup_step)/num_warmup_steps * init_lr`.
+
   if num_warmup_steps:
+    tf.compat.v1.logging.info("++++++ Warmup starts at step " + str(start_warmup_step)
+           + ", for " + str(num_warmup_steps) + " steps ++++++" )
     global_steps_int = tf.cast(global_step, tf.int32)
+    start_warm_int = tf.constant(start_warmup_step, dtype=tf.int32)
+    global_steps_int = global_steps_int - start_warm_int
     warmup_steps_int = tf.constant(num_warmup_steps, dtype=tf.int32)
 
     global_steps_float = tf.cast(global_steps_int, tf.float32)
@@ -58,13 +83,33 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, accum_ste
   # It is recommended that you use this optimizer for fine tuning, since this
   # is how the model was trained (note that the Adam m/v variables are NOT
   # loaded from init_checkpoint.)
-  optimizer = AdamWeightDecayOptimizer(
-      learning_rate=learning_rate,
-      weight_decay_rate=0.01,
-      beta_1=0.9,
-      beta_2=0.999,
-      epsilon=1e-6,
-      exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
+  # It is OK to use AdamW in the finetuning even the model is trained by LAMB.
+  # As report in the Bert pulic github, the learning rate for SQuAD 1.1 finetune
+  # is 3e-5, 4e-5 or 5e-5. For LAMB, the users can use 3e-4, 4e-4,or 5e-4 for a
+  # batch size of 64 in the finetune.
+
+  if optimizer_type == "adamw":
+    tf.compat.v1.logging.info('using adamw')
+    optimizer = AdamWeightDecayOptimizer(
+        learning_rate=learning_rate,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
+  elif optimizer_type == "lamb" :
+    tf.compat.v1.logging.info('using lamb optimizer')
+    optimizer = lamb_optimizer.LAMBOptimizer(
+        learning_rate=learning_rate,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=["LayerNorm" , "layer_norm","bias"])
+
+  else:
+    raise ValueError("Not supported optimizer: ", optimizer_type)
+
 
   if use_multi_cpu and (accum_steps == 1):
     import horovod.tensorflow as hvd
@@ -119,10 +164,15 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, accum_ste
     apply_step = tf.identity(tf.cast(tf.math.equal(current_step % accum_steps, 0), dtype=tf.bool), name="apply_step")
     update_op = tf.cond(apply_step, lambda: applyGrads(accum_vars, current_step), lambda: tf.no_op())
 
-    new_global_step = tf.cond(apply_step, lambda: global_step+1, lambda: global_step)
-    new_global_step = tf.identity(new_global_step, name='global_step_update')
-    train_op = tf.group(update_op, [global_step.assign(new_global_step)])
-  else :
+    #  Lamb optimizer already takes care of global_step increase in applyGrads 
+    #  via apply_gradients so no need to update global_step here
+    if optimizer_type == "adamw":
+      new_global_step = tf.cond(apply_step, lambda: global_step+1, lambda: global_step)
+      new_global_step = tf.identity(new_global_step, name='global_step_update')
+      train_op = tf.group(update_op, [global_step.assign(new_global_step)])
+    else:
+      train_op = update_op
+  else:
     if use_multi_cpu:
       grads_and_vars = optimizer.compute_gradients(
           loss, tvars, gate_gradients=tf.compat.v1.train.Optimizer.GATE_NONE)
@@ -140,9 +190,11 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, accum_ste
     # Normally the global step update is done inside of `apply_gradients`.
     # However, `AdamWeightDecayOptimizer` doesn't do this. But if you use
     # a different optimizer, you should probably take this line out.
-    new_global_step = global_step + 1
-    new_global_step = tf.identity(new_global_step, name='global_step_update')
-    train_op = tf.group(train_op, [global_step.assign(new_global_step)])
+    # For LAMB optimizer, apply_gradients already takes care of global_step increase
+    if optimizer_type == "adamw":
+      new_global_step = global_step + 1
+      new_global_step = tf.identity(new_global_step, name='global_step_update')
+      train_op = tf.group(train_op, [global_step.assign(new_global_step)])
 
   return train_op
 

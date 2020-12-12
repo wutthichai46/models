@@ -83,11 +83,17 @@ flags.DEFINE_integer("accum_steps", 1, "Accumulation steps for batch size greate
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
+flags.DEFINE_string("optimizer_type" , "lamb" , "Optimizer used for training Lamb or Adamw")
+
+flags.DEFINE_float("poly_power" , 1.0, "The Power of poly decay")
+
+flags.DEFINE_integer("start_warmup_step", 0, "The Starting step of warmup" )
+
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
 
 flags.DEFINE_integer("num_train_steps", 100000, "Number of training steps.")
 
-flags.DEFINE_integer("num_warmup_steps", 10000, "Number of warmup steps.")
+flags.DEFINE_integer("num_warmup_steps", 0, "Number of warmup steps.")
 
 flags.DEFINE_integer("save_checkpoints_steps", 1000,
                      "How often to save the model checkpoint.")
@@ -152,7 +158,7 @@ flags.DEFINE_bool(
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, accum_steps, use_tpu,
-                     use_one_hot_embeddings, use_multi_cpu=is_mpi):
+                     use_one_hot_embeddings, optimizer, poly_power, start_warmup_step, use_multi_cpu=is_mpi):
   """Returns `model_fn` closure for TPUEstimator."""
 
   def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
@@ -232,8 +238,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
       train_op = optimization.create_optimizer(
-              total_loss, learning_rate, num_train_steps, num_warmup_steps, 
-                            accum_steps, use_tpu=use_tpu, use_multi_cpu=is_mpi)
+          total_loss, learning_rate, num_train_steps, num_warmup_steps,
+          accum_steps, use_tpu, FLAGS.optimizer_type, is_mpi, FLAGS.poly_power, FLAGS.start_warmup_step)
 
       log_hook = bf.logTheLossHook(total_loss, FLAGS.accum_steps*3)
       output_spec = tf.compat.v1.estimator.tpu.TPUEstimatorSpec(
@@ -417,6 +423,9 @@ def input_fn_builder(input_files,
     # For eval, we want no shuffling and parallel reading doesn't matter.
     if is_training:
       d = tf.data.Dataset.from_tensor_slices(tf.constant(input_files))
+      input_length = len(input_files)
+      if hvd is not None:
+        d = d.shard(hvd.size(), hvd.rank())
       d = d.repeat()
       d = d.shuffle(buffer_size=len(input_files))
 
@@ -435,6 +444,8 @@ def input_fn_builder(input_files,
       d = tf.data.TFRecordDataset(input_files)
       # Since we evaluate for a fixed number of steps we don't want to encounter
       # out-of-range exceptions.
+      num_eval_samples = FLAGS.eval_batch_size * FLAGS.max_eval_steps
+      d = d.take(num_eval_samples)
       d = d.repeat()
 
     # We must `drop_remainder` on training because the TPU requires fixed
@@ -482,8 +493,8 @@ def main(_):
     FLAGS.output_dir = FLAGS.output_dir if hvd.rank() == 0 else \
         os.path.join(FLAGS.output_dir, str(hvd.rank()))
     # Horovod: adjust number of steps based on number of CPUs.
-    FLAGS.num_train_steps = FLAGS.num_train_steps // hvd.size()
-    FLAGS.num_warmup_steps = FLAGS.num_warmup_steps // hvd.size()
+    FLAGS.num_train_steps = FLAGS.num_train_steps 
+    FLAGS.num_warmup_steps = FLAGS.num_warmup_steps
     learning_rate = learning_rate * math.sqrt(hvd.size())
 
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
@@ -510,7 +521,7 @@ def main(_):
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   bert_config.new_scope_settings(FLAGS.new_bf16_scope)
   bert_config.set_additional_options(FLAGS.precision, 
-                                     FLAGS.experimental_gelu, 
+                                     FLAGS.experimental_gelu,
                                      FLAGS.optimized_softmax)
 
   tf.io.gfile.makedirs(FLAGS.output_dir)
@@ -539,6 +550,7 @@ def main(_):
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+      keep_checkpoint_max=5,
       session_config=session_config,
       tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
@@ -564,7 +576,10 @@ def main(_):
           accum_steps=FLAGS.accum_steps,
           use_tpu=FLAGS.use_tpu,
           use_one_hot_embeddings=FLAGS.use_tpu,
-          use_multi_cpu=is_mpi)
+	  optimizer=FLAGS.optimizer_type,
+          use_multi_cpu=is_mpi,
+          poly_power=FLAGS.poly_power,
+	  start_warmup_step=FLAGS.start_warmup_step)
   else :
     model_fn = model_fn_builder(
           bert_config=bert_config,
@@ -575,7 +590,10 @@ def main(_):
           accum_steps=FLAGS.accum_steps,
           use_tpu=FLAGS.use_tpu,
           use_one_hot_embeddings=FLAGS.use_tpu,
-          use_multi_cpu=is_mpi)
+          optimizer=FLAGS.optimizer_type,
+          use_multi_cpu=is_mpi,
+          poly_power=FLAGS.poly_power,
+	  start_warmup_step=FLAGS.start_warmup_step)
 
   # If TPU is not available, this will fall back to normal Estimator on CPU
   # or GPU.
@@ -611,8 +629,8 @@ def main(_):
       hooks.append(tf.compat.v1.train.ProfilerHook(save_steps=3, output_dir=FLAGS.output_dir,
                                                    show_memory=False))
 
-    estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps,
-                    hooks=hooks)
+    estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps, hooks=hooks)
+
 
   if FLAGS.do_eval:
     tf.compat.v1.logging.info("***** Running evaluation *****")

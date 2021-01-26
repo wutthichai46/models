@@ -17,6 +17,9 @@
 
 MODEL_DIR=${MODEL_DIR-$PWD}
 
+echo 'OUTPUT_DIR='$OUTPUT_DIR
+echo 'DATASET_DIR='$DATASET_DIR
+
 if [ -z "${OUTPUT_DIR}" ]; then
   echo "The required environment variable OUTPUT_DIR has not been set"
   exit 1
@@ -25,25 +28,8 @@ fi
 # Create the output directory in case it doesn't already exist
 mkdir -p ${OUTPUT_DIR}
 
-# If a prefix was given, don't specify a socket id
-socket_id_arg="--socket-id 0"
-if [[ ! -z "${PREFIX}" ]]; then
-  socket_id_arg=""
-fi
+python3 ${MODEL_DIR}/quickstart/common/tensorflow/multiinstance_run_benchmark.py \
+--run_script quickstart/fp32_batch_inference.sh
 
-FROZEN_GRAPH=${FROZEN_GRAPH-"$MODEL_DIR/pretrained_model/ssd_resnet34_fp32_1200x1200_pretrained_model.pb"}
-
-source "$(dirname $0)/common/utils.sh"
-_command ${PREFIX} python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
-    --in-graph $FROZEN_GRAPH \
-    --model-source-dir $TF_MODELS_DIR \
-    --model-name ssd-resnet34 \
-    --framework tensorflow \
-    --precision fp32 \
-    --mode inference \
-    ${socket_id_arg} \
-    --batch-size 1 \
-    --benchmark-only \
-    --output-dir ${OUTPUT_DIR} \
-    $@ \
-    -- input-size=1200
+echo "Throughput summary:"
+grep 'Throughput' ${OUTPUT_DIR}/fp32_batch_inference_*log  | awk -F' ' '{sum+=$2;} END{print sum} '

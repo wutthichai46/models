@@ -90,6 +90,9 @@ RUN apt-get update && \
 
 RUN pip install horovod==0.21.0
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends --fix-missing numactl
+
 ARG PACKAGE_DIR=model_packages
 
 ARG PACKAGE_NAME

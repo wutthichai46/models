@@ -33,7 +33,8 @@ slice_sets:
         <model-precision-mode>: resnet50v1-5-int8-inference
         <precision>: Int8
         <use case>: image-recognition
-        <docker image>: intel/image-recognition:tf-2.3.0-imz-2.2.0-resnet50v1-5-int8-inference
+        <docker image>: intel/image-recognition:tf-r2.4-imz-2.1.0-icx-ef82f4c66-resnet50v1-5-int8-inference
+        <package url>: https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_1_0_icx/resnet50v1-5-int8-inference.tar.gz
       uri: models/quickstart/image_recognition/tensorflow/resnet50v1_5/inference/int8
     downloads:
       - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/resnet50v1_5_int8_pretrained_model.pb
@@ -66,5 +67,6 @@ slice_sets:
     - destination: quickstart
       source: quickstart/image_recognition/tensorflow/resnet50v1_5/inference/int8
     partials:
+    - numactl
     - model_package
     - entrypoint

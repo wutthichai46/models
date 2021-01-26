@@ -15,7 +15,7 @@ ImageNet dataset in the TF records format.
 <!--- 20. Download link -->
 ## Download link
 
-[resnet50v1-5-fp32-inference.tar.gz](https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_1_0_icx/resnet50v1-5-fp32-inference.tar.gz)
+[resnet50v1-5-fp32-inference.tar.gz](https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0_icx/resnet50v1-5-fp32-inference.tar.gz)
 
 <!--- 40. Quick Start Scripts -->
 ## Quick Start Scripts
@@ -52,7 +52,7 @@ written, then run a [quickstart script](#quick-start-scripts).
 DATASET_DIR=<path to the preprocessed imagenet dataset>
 OUTPUT_DIR=<directory where log files will be written>
 
-wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_1_0_icx/resnet50v1-5-fp32-inference.tar.gz
+wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0_icx/resnet50v1-5-fp32-inference.tar.gz
 tar -xzf resnet50v1-5-fp32-inference.tar.gz
 cd resnet50v1-5-fp32-inference
 
@@ -63,7 +63,7 @@ quickstart/<script name>.sh
 <!-- 60. Docker -->
 ## Docker
 
-The model container `intel/image-recognition:tf-r2.4-imz-2.1.0-icx-ef82f4c66-resnet50v1-5-fp32-inference` includes the scripts
+The model container `intel/image-recognition:tf-r2.5-imz-2.2.0-icx-17c5420-resnet50v1-5-fp32-inference` includes the scripts
 and libraries needed to run ResNet50 v1.5 FP32 inference. To run one of the model
 inference quickstart scripts using this container, you'll need to provide volume mounts for
 the ImageNet dataset (if a real dataset is being used) and an output directory where
@@ -81,7 +81,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
-  intel/image-recognition:tf-r2.4-imz-2.1.0-icx-ef82f4c66-resnet50v1-5-fp32-inference \
+  intel/image-recognition:tf-r2.5-imz-2.2.0-icx-17c5420-resnet50v1-5-fp32-inference \
   /bin/bash quickstart/<script name>.sh
 ```
 

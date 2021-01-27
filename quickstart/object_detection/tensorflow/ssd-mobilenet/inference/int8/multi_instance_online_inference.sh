@@ -25,12 +25,12 @@ fi
 # Create the output directory in case it doesn't already exist
 mkdir -p ${OUTPUT_DIR}
 
+# Use synthetic data (no --data-location arg) if no DATASET_DIR is set
+dataset_arg="--data-location=${DATASET_DIR}"
 if [ -z "${DATASET_DIR}" ]; then
-  echo "The required environment variable DATASET_DIR has not been set"
-  exit 1
-fi
-
-if [ ! -f "${DATASET_DIR}" ]; then
+  echo "Using synthetic data, since the DATASET_DIR environment variable is not set."
+  dataset_arg=""
+elif [ ! -d "${DATASET_DIR}" ]; then
   echo "The DATASET_DIR '${DATASET_DIR}' does not exist"
   exit 1
 fi
@@ -43,17 +43,19 @@ if [ ! -f "${pretrained_model}" ]; then
 fi
 FROZEN_GRAPH="$(pwd)/${pretrained_model}"
 
+CORES_PER_INSTANCE="4"
+BATCH_SIZE="1"
+
 source "$(dirname $0)/common/utils.sh"
 _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
-    --data-location ${DATASET_DIR} \
-    --in-graph ${FROZEN_GRAPH} \
-    --output-dir ${OUTPUT_DIR} \
-    --model-name ssd-mobilenet \
-    --framework tensorflow \
-    --precision int8 \
-    --mode inference \
-    --socket-id 0 \
-    --benchmark-only \
-    --batch-size 1 \
-    $@
-
+  --in-graph ${FROZEN_GRAPH} \
+  --output-dir ${OUTPUT_DIR} \
+  --model-name ssd-mobilenet \
+  --framework tensorflow \
+  --precision int8 \
+  --batch-size=${BATCH_SIZE} \
+  --numa-cores-per-instance ${CORES_PER_INSTANCE} \
+  ${dataset_arg} \
+  --mode inference \
+  --benchmark-only \
+  $@

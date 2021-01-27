@@ -31,7 +31,6 @@ These quick start scripts can be run in different environments:
 * [Bare Metal](#bare-metal)
 * [Docker](#docker)
 
-
 <!--- 50. Bare Metal -->
 ## Bare Metal
 
@@ -86,3 +85,4 @@ document for more advanced use cases.
 ## License
 
 [LICENSE](/LICENSE)
+

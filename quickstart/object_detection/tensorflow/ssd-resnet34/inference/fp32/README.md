@@ -29,6 +29,8 @@ The performance benchmarking scripts ([fp32_inference.sh](fp32_inference.sh)
 and [fp32_inference_1200.sh](fp32_inference_1200.sh)) use synthetic data,
 so no dataset is required.
 
+
+
 <!--- 40. Quick Start Scripts -->
 ## Quick Start Scripts
 
@@ -141,3 +143,4 @@ document for more advanced use cases.
 ## License
 
 [LICENSE](/LICENSE)
+

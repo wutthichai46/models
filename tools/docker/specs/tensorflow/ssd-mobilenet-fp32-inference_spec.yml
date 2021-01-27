@@ -47,6 +47,7 @@ slice_sets:
     - destination: quickstart
       source: quickstart/object_detection/tensorflow/ssd-mobilenet/inference/fp32
     partials:
+    - numactl
     - model_package
     - entrypoint
     documentation:

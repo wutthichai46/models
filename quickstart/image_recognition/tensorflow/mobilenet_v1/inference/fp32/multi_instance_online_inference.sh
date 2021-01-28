@@ -53,3 +53,10 @@ _command python benchmarks/launch_benchmark.py \
   $@ \
   -- input_height=224 input_width=224 warmup_steps=500 steps=1000 \
   input_layer='input' output_layer='MobilenetV1/Predictions/Reshape_1'
+
+if [[ $? == 0 ]]; then
+  echo "Summary total images/sec:"
+  grep 'Average Throughput:' ${OUTPUT_DIR}/mobilenet_v1_fp32_inference_bs${BATCH_SIZE}_cores${CORES_PER_INSTANCE}_all_instances.log  | awk -F' ' '{sum+=$3;} END{print sum} '
+else
+  exit 1
+fi

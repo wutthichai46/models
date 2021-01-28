@@ -6,6 +6,7 @@ slice_sets:
   ssd-resnet34-fp32-inference:
   - add_to_name: -ssd-resnet34-fp32-inference
     args:
+    - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
     - PACKAGE_NAME=ssd-resnet34-fp32-inference
     - TF_BENCHMARKS_BRANCH=509b9d288937216ca7069f31cfb22aaa7db6a4a7
     - TF_BENCHMARKS_DIR=/tensorflow/ssd-resnet-benchmarks

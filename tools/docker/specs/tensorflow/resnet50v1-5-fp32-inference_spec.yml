@@ -6,7 +6,8 @@ slice_sets:
   resnet50v1-5-fp32-inference:
     - add_to_name: "-resnet50v1-5-fp32-inference"
       args:
-        - PACKAGE_NAME=resnet50v1-5-fp32-inference
+      - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
+      - PACKAGE_NAME=resnet50v1-5-fp32-inference
       dockerfile_subdirectory: "model_containers"
       downloads:
         - source: https://zenodo.org/record/2535873/files/resnet50_v1.pb

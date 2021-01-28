@@ -25,16 +25,6 @@ fi
 # Create the output directory in case it doesn't already exist
 mkdir -p ${OUTPUT_DIR}
 
-# Use synthetic data (no --data-location arg) if no DATASET_DIR is set
-dataset_arg="--data-location=${DATASET_DIR}"
-if [ -z "${DATASET_DIR}" ]; then
-  echo "Using synthetic data, since the DATASET_DIR environment variable is not set."
-  dataset_arg=""
-elif [ ! -d "${DATASET_DIR}" ]; then
-  echo "The DATASET_DIR '${DATASET_DIR}' does not exist"
-  exit 1
-fi
-
 # Untar pretrained model files
 pretrained_model="pretrained_model/ssdmobilenet_fp32_pretrained_model_combinedNMS.pb"
 if [ ! -f "${pretrained_model}" ]; then
@@ -56,7 +46,13 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
   --precision fp32 \
   --mode inference \
   --batch-size=${BATCH_SIZE} \
-  ${dataset_arg} \
   --numa-cores-per-instance ${CORES_PER_INSTANCE} \
   --benchmark-only \
   $@
+
+if [[ $? == 0 ]]; then
+  echo "Summary total samples/sec:"
+  grep 'Total samples/sec' ${OUTPUT_DIR}/ssd-mobilenet_fp32_inference_bs${BATCH_SIZE}_cores${CORES_PER_INSTANCE}_all_instances.log  | awk -F' ' '{sum+=$3;} END{print sum} '
+else
+  exit 1
+fi

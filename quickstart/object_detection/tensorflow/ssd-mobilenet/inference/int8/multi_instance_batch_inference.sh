@@ -48,3 +48,10 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
   --mode inference \
   --benchmark-only
   $@
+
+if [[ $? == 0 ]]; then
+  echo "Summary total samples/sec:"
+  grep 'Total samples/sec' ${OUTPUT_DIR}/ssd-mobilenet_int8_inference_bs${BATCH_SIZE}_cores*_all_instances.log  | awk -F' ' '{sum+=$3;} END{print sum} '
+else
+  exit 1
+fi

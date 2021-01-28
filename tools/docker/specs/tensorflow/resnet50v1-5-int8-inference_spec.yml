@@ -6,6 +6,7 @@ slice_sets:
   resnet50v1-5-int8-inference:
   - add_to_name: -resnet50v1-5-int8-inference
     args:
+    - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
     - PACKAGE_NAME=resnet50v1-5-int8-inference
     dockerfile_subdirectory: model_containers
     documentation:

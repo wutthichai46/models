@@ -7,11 +7,6 @@
 This document has instructions for running ResNet50 v1.5 Int8 inference using
 Intel-optimized TensorFlow.
 
-<!--- 20. Download link -->
-## Download link
-
-[resnet50v1-5-int8-inference.tar.gz](https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0_icx/resnet50v1-5-int8-inference.tar.gz)
-
 <!--- 30. Datasets -->
 ## Datasets
 
@@ -32,37 +27,8 @@ Set the `DATASET_DIR` to point to the TF records directory when running ResNet50
 | [`multi_instance_batch_inference.sh`](multi_instance_batch_inference.sh) | Uses numactl to run batch inference (batch_size=96) with one instance per socket for 1500 steps and 50 warmup steps. If no `DATASET_DIR` is set, synthetic data is used. The script waits for all instances to complete, then prints a summarized throughput value. |
 | [`multi_instance_online_inference.sh`](multi_instance_online_inference.sh) | Uses numactl to run online inference (batch_size=1) using four cores per instance for 1500 steps and 50 warmup steps. If no `DATASET_DIR` is set, synthetic data is used. The script waits for all instances to complete, then prints a summarized throughput value. |
 
-These quickstart scripts can be run in different environments:
-* [Bare Metal](#bare-metal)
+These quickstart scripts can be run using:
 * [Docker](#docker)
-
-<!--- 50. Bare Metal -->
-## Bare Metal
-
-To run on bare metal, the following prerequisites must be installed in your environment:
-* Python 3
-* [intel-tensorflow==2.3.0](https://pypi.org/project/intel-tensorflow/)
-* numactl
-
-After installing the prerequisites, download and untar the model package.
-Set environment variables for the path to your `DATASET_DIR` and an
-`OUTPUT_DIR` where log files will be written, then run a 
-[quickstart script](#quick-start-scripts).
-
-For accuracy, `DATASET_DIR` is required to be set. For inference,
-just to evaluate performance on sythetic data, the `DATASET_DIR` is not needed.
-Otherwise `DATASET_DIR` needs to be set:
-
-```
-DATASET_DIR=<path to the dataset>
-OUTPUT_DIR=<directory where log files will be written>
-
-wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0_icx/resnet50v1-5-int8-inference.tar.gz
-tar -xzf resnet50v1-5-int8-inference.tar.gz
-cd resnet50v1-5-int8-inference
-
-quickstart/<script name>.sh
-```
 
 <!--- 60. Docker -->
 ## Docker

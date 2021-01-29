@@ -9,6 +9,5 @@
 | [`multi_instance_batch_inference.sh`](multi_instance_batch_inference.sh) | Uses numactl to run batch inference (batch_size=96) with one instance per socket for 1500 steps and 50 warmup steps. If no `DATASET_DIR` is set, synthetic data is used. The script waits for all instances to complete, then prints a summarized throughput value. |
 | [`multi_instance_online_inference.sh`](multi_instance_online_inference.sh) | Uses numactl to run online inference (batch_size=1) using four cores per instance for 1500 steps and 50 warmup steps. If no `DATASET_DIR` is set, synthetic data is used. The script waits for all instances to complete, then prints a summarized throughput value. |
 
-These quickstart scripts can be run in different environments:
-* [Bare Metal](#bare-metal)
+These quickstart scripts can be run using:
 * [Docker](#docker)

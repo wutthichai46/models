@@ -7,11 +7,6 @@ This document has instructions for running
 [BERT](https://github.com/google-research/bert#what-is-bert) FP32 inference
 using Intel-optimized TensorFlow.
 
-<!--- 20. Download link -->
-## Download link
-
-[bert-large-fp32-inference.tar.gz](https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0/bert-large-fp32-inference.tar.gz)
-
 <!--- 30. Datasets -->
 ## Datasets
 
@@ -39,37 +34,8 @@ Set the `DATASET_DIR` to point to that directory when running BERT Large inferen
 | [`multi_instance_batch_inference.sh`](multi_instance_batch_inference.sh) | A multi-instance run that uses all the cores for each socket for each instance with a batch size of 128. |
 | [`multi_instance_online_inference.sh`](multi_instance_online_inference.sh) | A multi-instance run that uses 4 cores for each instance with a batch size of 1. |
 
-These quickstart scripts can be run the following environments:
-* [Bare metal](#bare-metal)
+These quickstart scripts can be run using:
 * [Docker](#docker)
-
-
-<!--- 50. Bare Metal -->
-## Bare Metal
-
-To run on bare metal, the following prerequisites must be installed in your enviornment:
-* Python 3
-* [intel-tensorflow==2.3.0](https://pypi.org/project/intel-tensorflow/)
-* numactl
-* git
-
-Once the above dependencies have been installed, download and untar the model
-package, set environment variables, and then run a quickstart script. See the
-[datasets](#datasets) and [list of quickstart scripts](#quick-start-scripts) 
-for more details on the different options.
-
-The snippet below shows how to run a quickstart script:
-```
-wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0/bert-large-fp32-inference.tar.gz
-tar -xvf bert-large-fp32-inference.tar.gz
-cd bert-large-fp32-inference
-
-DATASET_DIR=<path to the dataset being used>
-OUTPUT_DIR=<directory where log files will be saved>
-
-# Run a script for your desired usage
-bash ./quickstart/<script name>.sh
-```
 
 <!-- 60. Docker -->
 ## Docker

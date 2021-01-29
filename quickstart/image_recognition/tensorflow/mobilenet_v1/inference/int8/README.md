@@ -7,11 +7,6 @@
 This document has instructions for running MobileNet V1 Int8 inference using
 Intel-optimized TensorFlow.
 
-<!--- 20. Download link -->
-## Download link
-
-[mobilenet-v1-int8-inference.tar.gz](https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0/mobilenet-v1-int8-inference.tar.gz)
-
 <!--- 30. Datasets -->
 ## Datasets
 
@@ -33,34 +28,8 @@ Set the `DATASET_DIR` to point to this directory when running MobileNet V1.
 | [`multi_instance_batch_inference.sh`](multi_instance_batch_inference.sh) | A multi-instance run that uses all the cores for each socket for each instance with a batch size of 56. Uses synthetic data if no `DATASET_DIR` is set. |
 | [`multi_instance_online_inference.sh`](multi_instance_online_inference.sh) | A multi-instance run that uses 4 cores per instance with a batch size of 1. Uses synthetic data if no `DATASET_DIR` is set. |
 
-
-These quickstart scripts can be run in different environments:
-* [Bare Metal](#bare-metal)
+These quickstart scripts can be run using:
 * [Docker](#docker)
-
-<!--- 50. Bare Metal -->
-## Bare Metal
-
-To run on bare metal, the following prerequisites must be installed in your environment:
-* Python 3
-* [intel-tensorflow==2.3.0](https://pypi.org/project/intel-tensorflow/)
-* numactl
-
-After installing the prerequisites, download and untar the model package.
-Set environment variables for the path to your `DATASET_DIR` and an
-`OUTPUT_DIR` where log files will be written, then run a 
-[quickstart script](#quick-start-scripts).
-
-```
-DATASET_DIR=<path to the dataset> # This is only for running accuracy
-OUTPUT_DIR=<directory where log files will be written>
-
-wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_2_0/mobilenet-v1-int8-inference.tar.gz
-tar -xzf mobilenet-v1-int8-inference.tar.gz
-cd mobilenet-v1-int8-inference
-
-quickstart/<script name>.sh
-```
 
 <!--- 60. Docker -->
 ## Docker

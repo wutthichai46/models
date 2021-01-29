@@ -41,6 +41,7 @@ cores_per_socket="${cores_per_socket//[[:blank:]]/}"
 num_intra_threads=$(($cores_per_socket - 4))
 
 BATCH_SIZE="256"
+NUM_INSTANCES="2"
 
 source "$(dirname $0)/common/utils.sh"
 _command python benchmarks/launch_benchmark.py \
@@ -51,7 +52,7 @@ _command python benchmarks/launch_benchmark.py \
   --checkpoint ${OUTPUT_DIR} \
   --data-location=${DATASET_DIR} \
   --output-dir ${OUTPUT_DIR} \
-  --mpi_num_processes=2 \
+  --mpi_num_processes=${NUM_INSTANCES} \
   --mpi_num_processes_per_socket=1 \
   --batch-size ${BATCH_SIZE} \
   --num-intra-threads ${num_intra_threads} \
@@ -62,8 +63,10 @@ _command python benchmarks/launch_benchmark.py \
   epochs_between_evals=1 2>&1 | tee ${OUTPUT_DIR}/resnet50v1_5_fp32_training_bs${BATCH_SIZE}_all_instances.log
 
 if [[ $? == 0 ]]; then
-  echo "Summary:"
-  cat ${OUTPUT_DIR}/resnet50v1_5_fp32_training_bs${BATCH_SIZE}_all_instances.log | grep "global_step/sec:" | sed -e s"/.*: //" | tail -n 1
+  global_steps=`cat ${OUTPUT_DIR}/resnet50v1_5_fp32_training_bs${BATCH_SIZE}_all_instances.log | grep "global_step/sec:" | sed -e s"/.*: //" | tail -n 1`
+  summary=`python -c "print(${global_steps}*${NUM_INSTANCES}*${BATCH_SIZE})"`
+  echo "Throughput summary:"
+  echo $summary
   exit 0
 else
   exit 1

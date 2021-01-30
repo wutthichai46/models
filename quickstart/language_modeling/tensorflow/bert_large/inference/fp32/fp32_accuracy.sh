@@ -64,7 +64,7 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
     --precision=fp32 \
     --mode=inference \
     --framework=tensorflow \
-    --socket-id 0
+    --socket-id 0 \
     --batch-size=32 \
     --in-graph ${PRETRAINED_MODEL} \
     --data-location ${DATASET_DIR} \

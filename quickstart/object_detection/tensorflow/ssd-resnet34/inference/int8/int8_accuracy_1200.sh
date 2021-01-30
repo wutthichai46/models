@@ -35,7 +35,7 @@ if [ ! -d "${DATASET_DIR}" ]; then
   exit 1
 fi
 
-FROZEN_GRAPH=${FROZEN_GRAPH-"$MODEL_DIR/pretrained_model/ssd_resnet34_int8_1200x1200_pretrained_model.pb"}
+FROZEN_GRAPH=${FROZEN_GRAPH-"$MODEL_DIR/pretrained_models/ssd_resnet34_int8_1200x1200_pretrained_model.pb"}
 
 source "$(dirname $0)/common/utils.sh"
 _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \

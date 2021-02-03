@@ -39,7 +39,7 @@ elif [ ! -d "${DATASET_DIR}" ]; then
 fi
 
 MODEL_FILE="${MODEL_DIR}/pretrained_model/resnet50v1_5_int8_pretrained_model.pb"
-BATCH_SIZE="96"
+BATCH_SIZE="128"
 CORES_PER_INSTANCE="socket"
 PRECISION="int8"
 MODE="inference"

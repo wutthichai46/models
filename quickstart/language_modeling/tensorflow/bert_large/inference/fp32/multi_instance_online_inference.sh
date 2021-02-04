@@ -60,6 +60,8 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
   --in-graph ${PRETRAINED_MODEL} \
   --checkpoint ${CHECKPOINT_DIR} \
   --numa-cores-per-instance ${CORES_PER_INSTANCE} \
+  --num-intra-threads 8 \
+  --num-inter-threads 1 \
   --benchmark-only \
   --output-dir ${OUTPUT_DIR} \
   $@ \

@@ -11,7 +11,7 @@ slice_sets:
     dockerfile_subdirectory: model_containers
     downloads:
     - destination: mobilenet_v1_1.0_224_frozen.pb
-      source: https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_6/mobilenet_v1_1.0_224_frozen.pb
+      source: https://storage.googleapis.com/intel-optimized-tensorflow/models/r2.5-icx-b631821f/mobilenetv1_fp32_pretrained_model.pb
     files:
     - destination: benchmarks/common
       source: benchmarks/common

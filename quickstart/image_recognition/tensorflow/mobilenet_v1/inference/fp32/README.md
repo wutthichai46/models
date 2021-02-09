@@ -28,7 +28,7 @@ These quickstart scripts can be run using:
 <!-- 60. Docker -->
 ## Docker
 
-The model container `intel/image-recognition:tf-2.3.0-imz-2.2.0-mobilenet-v1-fp32-inference` includes the scripts
+The model container `intel/image-recognition:tf-r2.5-icx-b631821f-mobilenet-v1-fp32-inference` includes the scripts
 and libraries needed to run MobileNet V1 FP32 inference. To run one of the model
 inference quickstart scripts using this container, you'll need to provide volume mounts for
 the ImageNet dataset and an output directory where checkpoint files will be written.
@@ -45,7 +45,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
-  intel/image-recognition:tf-2.3.0-imz-2.2.0-mobilenet-v1-fp32-inference \
+  intel/image-recognition:tf-r2.5-icx-b631821f-mobilenet-v1-fp32-inference \
   /bin/bash quickstart/<script name>.sh
 ```
 

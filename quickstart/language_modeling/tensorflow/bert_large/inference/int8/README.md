@@ -37,6 +37,7 @@ Set the `DATASET_DIR` to point to that directory when running BERT Large inferen
 These quickstart scripts can be run using:
 * [Docker](#docker)
 
+<!-- 60. Docker -->
 ## Docker
 
 The BERT Large Int8 inference model container includes the scripts,
@@ -58,7 +59,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -it \
-  intel/language-modeling:tf-2.3.0-imz-2.2.0-bert-large-int8-inference \
+  intel/language-modeling:tf-r2.5-icx-b631821f-bert-large-int8-inference \
   /bin/bash ./quickstart/<script name>.sh
 ```
 

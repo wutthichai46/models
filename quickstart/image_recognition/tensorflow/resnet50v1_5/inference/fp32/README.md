@@ -30,7 +30,7 @@ These quickstart scripts can be run using:
 <!-- 60. Docker -->
 ## Docker
 
-The model container `intel/image-recognition:tf-r2.5-imz-2.2.0-icx-17c5420-resnet50v1-5-fp32-inference` includes the scripts
+The model container `intel/image-recognition:tf-r2.5-icx-b631821f-resnet50v1-5-fp32-inference` includes the scripts
 and libraries needed to run ResNet50 v1.5 FP32 inference. To run one of the model
 inference quickstart scripts using this container, you'll need to provide volume mounts for
 the ImageNet dataset (if a real dataset is being used) and an output directory where
@@ -48,7 +48,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
-  intel/image-recognition:tf-r2.5-imz-2.2.0-icx-17c5420-resnet50v1-5-fp32-inference \
+  intel/image-recognition:tf-r2.5-icx-b631821f-resnet50v1-5-fp32-inference \
   /bin/bash quickstart/<script name>.sh
 ```
 

@@ -44,7 +44,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
-  intel/image-recognition:tf-r2.5-imz-2.2.0-icx-17c5420-resnet50v1-5-fp32-training \
+  intel/image-recognition:tf-r2.5-icx-b631821f-resnet50v1-5-fp32-training \
   /bin/bash quickstart/<script name>.sh
 ```
 

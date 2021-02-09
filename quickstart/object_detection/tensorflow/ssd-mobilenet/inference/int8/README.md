@@ -49,7 +49,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
-  intel/object-detection:tf-2.3.0-imz-2.2.0-ssd-mobilenet-int8-inference \
+  intel/object-detection:tf-r2.5-icx-b631821f-ssd-mobilenet-int8-inference \
   /bin/bash quickstart/<script name>.sh
 ```
 

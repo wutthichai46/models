@@ -90,7 +90,7 @@ $ python launch_benchmark.py \
     --mode inference \
     --socket-id 0 \
     --batch-size 1 \
-    --docker-image intel/intel-optimized-tensorflow:2.3.0 \
+    --docker-image intel/intel-optimized-tensorflow:tf-r2.5-icx-b631821f \
     --volume /home/<user>/ssd-resnet-benchmarks:/workspace/ssd-resnet-benchmarks \
     --benchmark-only \
     -- input-size=1200
@@ -115,7 +115,7 @@ $ python launch_benchmark.py \
     --mode inference \
     --socket-id 0 \
     --batch-size 1 \
-    --docker-image intel/intel-optimized-tensorflow:2.3.0 \
+    --docker-image intel/intel-optimized-tensorflow:tf-r2.5-icx-b631821f \
     --volume /home/<user>/ssd-resnet-benchmarks:/workspace/ssd-resnet-benchmarks \
     --accuracy-only 
 ```
@@ -236,7 +236,7 @@ $ python launch_benchmark.py \
     --mode inference \
     --socket-id 0 \
     --batch-size 1 \
-    --docker-image intel/intel-optimized-tensorflow:2.3.0 \
+    --docker-image intel/intel-optimized-tensorflow:tf-r2.5-icx-b631821f \
     --volume /home/<user>/ssd-resnet-benchmarks:/workspace/ssd-resnet-benchmarks \
     --benchmark-only 
 ```
@@ -260,7 +260,7 @@ $ python launch_benchmark.py \
     --mode inference \
     --socket-id 0 \
     --batch-size 1 \
-    --docker-image intel/intel-optimized-tensorflow:2.3.0 \
+    --docker-image intel/intel-optimized-tensorflow:tf-r2.5-icx-b631821f \
     --volume /home/<user>/ssd-resnet-benchmarks:/workspace/ssd-resnet-benchmarks \
     --accuracy-only \
     -- input-size=1200

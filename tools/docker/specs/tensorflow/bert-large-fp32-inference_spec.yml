@@ -33,7 +33,7 @@ slice_sets:
     downloads:
       - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_6_1/bert_large_checkpoints.zip
         destination: pretrained_model/bert_large_checkpoints.zip
-      - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/staging/fp32_bert_squad.pb
+      - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/r2.5-icx-b631821f/fp32_bert_squad.pb
         destination: pretrained_model/fp32_bert_squad.pb
     partials:
     - model_package

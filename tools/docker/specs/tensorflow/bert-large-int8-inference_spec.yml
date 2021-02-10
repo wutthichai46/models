@@ -35,7 +35,7 @@ slice_sets:
         <use case>: language_modeling
       uri: models/quickstart/language_modeling/tensorflow/bert_large/inference/int8
     downloads:
-      - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/staging/asymmetric_per_channel_bert_int8.pb
+      - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/r2.5-icx-b631821f/asymmetric_per_channel_bert_int8.pb
         destination: pretrained_model/asymmetric_per_channel_bert_int8.pb
       - source: https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_6_1/bert_large_checkpoints.zip
         destination: pretrained_model/bert_large_checkpoints.zip

@@ -45,7 +45,7 @@ slice_sets:
           partials:
               - tensorflow/tensorflow-base
           args:
-              - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
+              - TENSORFLOW_IMAGE=intel/intel-optimized-tensorflow
 
     mpi-horovod:
         - add_to_name: ""

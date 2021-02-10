@@ -6,7 +6,7 @@ slice_sets:
   bert-large-fp32-inference:
   - add_to_name: -bert-large-fp32-inference
     args:
-    - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
+    - TENSORFLOW_IMAGE=intel/intel-optimized-tensorflow
     - PACKAGE_NAME=bert-large-fp32-inference
     dockerfile_subdirectory: model_containers
     files:

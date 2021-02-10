@@ -37,7 +37,7 @@ slice_sets:
                   - name: License link
                     uri: models/quickstart/image_recognition/tensorflow/resnet50v1_5/training/fp32/.docs/license.md
           args:
-              - TENSORFLOW_IMAGE=amr-registry.caas.intel.com/aipg-tf/model-zoo
+              - TENSORFLOW_IMAGE=intel/intel-optimized-tensorflow
               - PACKAGE_NAME=resnet50v1-5-fp32-training
           files:
               - source: benchmarks/common

@@ -34,7 +34,8 @@ RUN echo "http_caching=packages" >> /etc/yum.conf && \
     autoconf \
     bzip2 \
     patch \
-    numactl && \
+    numactl \
+    file && \
     alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
     --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
     --slave /usr/local/bin/cpack cpack /usr/bin/cpack \
@@ -48,20 +49,21 @@ RUN echo "http_caching=packages" >> /etc/yum.conf && \
     yum install -y centos-release-scl && \
     yum install -y devtoolset-7 && \
     source /opt/rh/devtoolset-7/enable && \
-    wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz && \
-    tar -xvzf protobuf-2.6.1.tar.gz && \
+    wget --quiet https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz && \
+    tar -xzf protobuf-2.6.1.tar.gz && \
     cd protobuf-2.6.1 && \
     ./configure && \
     make && \
     make install
 
-RUN wget https://repo.continuum.io/archive/Anaconda3-5.0.0-Linux-x86_64.sh -O anaconda3.sh && \
+RUN wget --quiet https://repo.continuum.io/archive/Anaconda3-5.0.0-Linux-x86_64.sh -O anaconda3.sh && \
     chmod +x anaconda3.sh && \
     ./anaconda3.sh -b -p ~/anaconda3 && \
     rm ./anaconda3.sh && \
     ~/anaconda3/bin/conda create -yn pytorch && \
     export PATH=~/anaconda3/bin/:$PATH && \
     source activate pytorch && \
+    pip install pip==21.0.1 && \
     pip install sklearn onnx && \
     conda config --add channels intel && \
     conda install -y ninja pyyaml setuptools cmake cffi typing intel-openmp && \

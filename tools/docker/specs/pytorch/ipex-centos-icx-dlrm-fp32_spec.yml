@@ -7,6 +7,8 @@ slice_sets:
   - add_to_name: "ipex-centos"
     partials:
       - pytorch/ipex-centos-icx-dlrm-base
+    args:
+        - IPEX_CONTAINER_TAG=intel/recommendation:pytorch-1.5.0-rc3-icx-a37fb5e8
   icx-dlrm-fp32:
   - add_to_name: -icx-dlrm-fp32
     args:

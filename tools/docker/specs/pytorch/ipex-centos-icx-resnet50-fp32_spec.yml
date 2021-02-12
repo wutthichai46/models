@@ -7,6 +7,8 @@ slice_sets:
   - add_to_name: "ipex-centos"
     partials:
       - pytorch/ipex-centos-icx-resnet50-base
+    args:
+        - IPEX_CONTAINER_TAG=intel/image-recognition:pytorch-1.5.0-rc3-icx-a37fb5e8
   icx-resnet50-fp32:
   - add_to_name: -icx-resnet50-fp32
     args:

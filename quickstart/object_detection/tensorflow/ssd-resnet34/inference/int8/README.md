@@ -75,7 +75,7 @@ docker run \
   --volume ${OUTPUT_DIR}:${OUTPUT_DIR} \
   --privileged --init -t \
   intel/object-detection:tf-r2.5-icx-b631821f-ssd-resnet34-int8-inference \
-  /bin/bash quickstart/int8_accuracy.sh
+  /bin/bash quickstart/int8_accuracy_1200.sh
 ```
 
 <!--- 80. License -->

@@ -1,4 +1,4 @@
-# Copyright 2019-2021 Intel Corporation
+# Copyright 2019-2020 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import time
 import math
 from tqdm import tqdm
 import argparse
-import extend_distributed as ext_dist
 
 
 class DataLoader:
@@ -221,30 +220,11 @@ class CriteoBinDataset(Dataset):
 
         self.batch_size = batch_size
         self.max_ind_range = max_ind_range
-        self.bytes_per_batch = (bytes_per_feature * self.tot_fea * batch_size)
+        self.bytes_per_entry = (bytes_per_feature * self.tot_fea * batch_size)
 
-        data_file_size = os.path.getsize(data_file)
-        self.num_batches = math.ceil(data_file_size / self.bytes_per_batch)
+        self.num_entries = math.ceil(os.path.getsize(data_file) / self.bytes_per_entry)
 
-        bytes_per_sample = bytes_per_feature * self.tot_fea
-        self.num_samples = data_file_size // bytes_per_sample
-
-        if ext_dist.my_size > 1:
-            self.bytes_per_rank = self.bytes_per_batch // ext_dist.my_size
-        else:
-            self.bytes_per_rank = self.bytes_per_batch
-
-        if ext_dist.my_size > 1 and self.num_batches * self.bytes_per_batch > data_file_size:
-            last_batch = (data_file_size % self.bytes_per_batch) // bytes_per_sample
-            self.bytes_last_batch = last_batch // ext_dist.my_size * bytes_per_sample
-        else:
-            self.bytes_last_batch = self.bytes_per_rank
-
-        if self.bytes_last_batch == 0:
-            self.num_batches = self.num_batches - 1
-            self.bytes_last_batch = self.bytes_per_rank
-
-        print('data file:', data_file, 'number of batches:', self.num_batches)
+        print('data file:', data_file, 'number of batches:', self.num_entries)
         self.file = open(data_file, 'rb')
 
         with np.load(counts_file) as data:
@@ -254,13 +234,11 @@ class CriteoBinDataset(Dataset):
         self.m_den = 13
 
     def __len__(self):
-        return self.num_batches
+        return self.num_entries
 
     def __getitem__(self, idx):
-        my_rank = ext_dist.dist.get_rank() if ext_dist.my_size > 1 else 0
-        rank_size = self.bytes_last_batch if idx == (self.num_batches - 1) else self.bytes_per_rank 
-        self.file.seek(idx * self.bytes_per_batch + rank_size * my_rank, 0)
-        raw_data = self.file.read(rank_size)
+        self.file.seek(idx * self.bytes_per_entry, 0)
+        raw_data = self.file.read(self.bytes_per_entry)
         array = np.frombuffer(raw_data, dtype=np.int32)
         tensor = torch.from_numpy(array).view((-1, self.tot_fea))
 

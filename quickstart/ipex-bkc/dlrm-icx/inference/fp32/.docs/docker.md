@@ -21,7 +21,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --volume ${WEIGHT_PATH}:${WEIGHT_PATH} \
   --privileged --init -t \
-  model-zoo:ipex-centos-icx-dlrm-fp32 \
+  intel/recommendation:pytorch-1.5.0-rc3-icx-a37fb5e8-dlrm-fp32 \
   /bin/bash quickstart/inference_accuracy.sh
 ```
 
@@ -34,6 +34,6 @@ docker run \
   --env DATASET_DIR=${DATASET_DIR} \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --privileged --init -t \
-  model-zoo:ipex-centos-icx-dlrm-fp32 \
+  intel/recommendation:pytorch-1.5.0-rc3-icx-a37fb5e8-dlrm-fp32 \
   /bin/bash quickstart/<script name>.sh
 ```

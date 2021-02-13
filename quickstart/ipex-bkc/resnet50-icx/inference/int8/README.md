@@ -68,7 +68,7 @@ docker run \
   --env BASH_ENV=/root/.bash_profile \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --privileged --init -t \
-  model-zoo:ipex-centos-icx-resnet50-int8 \
+  intel/image-recognition:pytorch-1.5.0-rc3-icx-a37fb5e8-resnet50-int8 \
   /bin/bash quickstart/inference_accuracy.sh
 ```
 
@@ -87,7 +87,7 @@ docker run \
   --volume ${DATASET_DIR}:${DATASET_DIR} \
   --privileged --init -t \
   -shm-size <shared memory value> \
-  model-zoo:ipex-centos-icx-resnet50-int8 \
+  intel/image-recognition:pytorch-1.5.0-rc3-icx-a37fb5e8-resnet50-int8 \
   /bin/bash quickstart/inference_accuracy.sh
 ```
 To run throughput and realtime scripts you don't have to mount any dataset.
@@ -99,7 +99,7 @@ docker run \
   --env https_proxy=${https_proxy} \
   --env BASH_ENV=/root/.bash_profile \
   --privileged --init -t \
-  model-zoo:ipex-centos-icx-resnet50-int8 \
+  intel/image-recognition:pytorch-1.5.0-rc3-icx-a37fb5e8-resnet50-int8 \
   /bin/bash quickstart/<script name>
 ```
 

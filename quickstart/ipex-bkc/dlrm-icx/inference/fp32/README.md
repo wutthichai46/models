@@ -30,8 +30,8 @@ The folder that contains the "Terabyte Click Logs" dataset should be set as the
 
 | Script name | Description |
 |-------------|-------------|
-| [`ipex_inference_realtime.sh`](ipex_inference_realtime.sh) | Runs online inference on data and uses ipex optimization (batch_size=1). |
-| [`vanilla_inference_realtime.sh`](vanilla_inference_realtime.sh) | Runs online inference on datat but doesn't use ipex optimization (batch_size=1). |
+| [`ipex_inference_latency.sh`](ipex_inference_latency.sh) | Runs online inference on data and uses ipex optimization (batch_size=1). |
+| [`vanilla_inference_latency.sh`](vanilla_inference_latency.sh) | Runs online inference on datat but doesn't use ipex optimization (batch_size=1). |
 | [`inference_accuracy.sh`](inference_accuracy.sh) | Measures the model accuracy (batch_size=128). |
 
 <!--- 40. Docker -->
@@ -42,10 +42,16 @@ DLRM inference in fp32 precision.
 
 To run the accuracy test, you will need
 mount a volume and set the `DATASET_DIR` environment variable to point
-to the prepped [Terabyte Click Logs Dataset](#dataset). The accuracy
-script needs the model weight so you can set the `WEIGHT_PATH` environment
-variable to point to the model weight and mount the volume as well. Note that
-only to calculate the accuracy you'll need the `WEIGHT_PATH`.
+to the prepped [Terabyte Click Logs Dataset](#dataset). 
+The accuracy script needs the model weight. To set up the `WEIGHT_PATH` 
+follow the steps described below.
+
+```
+$ export WEIGHT_PATH=<path to weight file>
+$ wget -O $WEIGHT_PATH https://storage.googleapis.com/intel-optimized-tensorflow/models/icx-base-a37fb5e8/terabyte_mlperf_official.pt 
+```
+Here, <path to weight file> can be the path you want the weight file to be downloaded at
+Note that you'll need the `WEIGHT_PATH`only for calculating the accuracy
 
 ```
 export DATASET_DIR=<path to the dataset folder>

@@ -59,10 +59,14 @@ LOG=${OUTPUT_DIR}/dlrm_training_log/${PRECISION}
 rm -rf ${LOG}
 mkdir -p ${LOG}
 
+if [[ "$PRECISION" == *"avx"* ]]; then
+    unset DNNL_MAX_CPU_ISA
+fi
+
 if [[ $PRECISION == "bf16" ]]; then
-    ARGS="$ARGS --bf16 "
+    ARGS="$ARGS --bf16"
     echo "running bf16 path"
-elif [[ $PRECISION == "fp32" ]]; then
+elif [[ $PRECISION == "fp32" || $PRECISION == "avx-fp32" ]]; then
     echo "running fp32 path"
 else
     echo "The specified PRECISION '${PRECISION}' is unsupported."
@@ -91,7 +95,7 @@ for i in $(seq 1 $((SOCKETS-1))); do
   --arch-mlp-bot=13-512-256-128 --arch-mlp-top=1024-1024-512-256-1 \
   --arch-sparse-feature-size=128 --max-ind-range=40000000 \
   --numpy-rand-seed=727 --print-auc --mlperf-auc-threshold=0.8025 \
-  --mini-batch-size=${BATCHSIZE} --print-freq=1000 --print-time --ipex-interaction \
+  --mini-batch-size=${BATCHSIZE} --print-freq=100 --print-time --ipex-interaction \
   --test-mini-batch-size=16384 --ipex-merged-emb \
   $ARGS |tee $LOG_i &
 done
@@ -108,7 +112,7 @@ $numa_cmd python -u $MODEL_SCRIPT \
   --arch-mlp-bot=13-512-256-128 --arch-mlp-top=1024-1024-512-256-1 \
   --arch-sparse-feature-size=128 --max-ind-range=40000000 \
   --numpy-rand-seed=727 --print-auc --mlperf-auc-threshold=0.8025 \
-  --mini-batch-size=${BATCHSIZE} --print-freq=1000 --print-time --ipex-interaction \
+  --mini-batch-size=${BATCHSIZE} --print-freq=100 --print-time --ipex-interaction \
   --test-mini-batch-size=16384 --ipex-merged-emb \
   $ARGS |tee $LOG_0
 wait

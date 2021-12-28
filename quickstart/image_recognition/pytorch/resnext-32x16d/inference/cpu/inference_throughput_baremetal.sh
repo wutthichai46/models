@@ -39,7 +39,7 @@ fi
 rm -rf ${OUTPUT_DIR}/resnext101_throughput_log_*
 
 ARGS=""
-ARGS="$ARGS -e -a resnext101_32x16d_swsl --hub ../ --dummy"
+ARGS="$ARGS -e -a resnext101_32x16d_wsl --hub ../ --dummy"
 
 if [[ $PRECISION == "int8" || $PRECISION == "avx-int8" ]]; then
     if [[ $PRECISION == "avx-int8" ]]; then

@@ -40,7 +40,6 @@ if [ ! -d "${DATASET_DIR}" ]; then
   exit 1
 fi
 
-
 export TEST_FULLY_CONVERGENCE=0
 if [[ "$NUM_BATCH" != "" ]]
 then
@@ -51,7 +50,7 @@ else
     echo "not set early stop interaction, will fully test convergence"
     TEST_FULLY_CONVERGENCE=1
 fi
-
+ 
 
 # Create the output directory in case it doesn't already exist
 mkdir -p ${OUTPUT_DIR}

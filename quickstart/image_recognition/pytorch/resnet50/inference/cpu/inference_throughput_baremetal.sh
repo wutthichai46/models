@@ -41,16 +41,19 @@ rm -rf ${OUTPUT_DIR}/resnet50_throughput_log_*
 ARGS=""
 ARGS="$ARGS -e -a resnet50 ../ --dummy"
 
+# default value, you can fine-tune it to get perfect performance.
+BATCH_SIZE=112
+
 if [[ $PRECISION == "int8" || $PRECISION == "avx-int8" ]]; then
-    if [[ $PRECISION == "avx-int8" ]]; then
-        unset DNNL_MAX_CPU_ISA
-    fi
+    BATCH_SIZE=116
     echo "running int8 path"
     ARGS="$ARGS --int8 --configure-dir ${MODEL_DIR}/models/image_recognition/pytorch/common/resnet50_configure_sym.json"
 elif [[ $PRECISION == "bf16" ]]; then
+    BATCH_SIZE=68
     ARGS="$ARGS --bf16 --jit"
     echo "running bf16 path"
-elif [[ $PRECISION == "fp32" ]]; then
+elif [[ $PRECISION == "fp32" || $PRECISION == "avx-fp32" ]]; then
+    BATCH_SIZE=64
     ARGS="$ARGS --jit"
     echo "running fp32 path"
 else
@@ -68,8 +71,6 @@ CORES_PER_INSTANCE=$CORES
 export DNNL_PRIMITIVE_CACHE_CAPACITY=1024
 export KMP_BLOCKTIME=1
 export KMP_AFFINITY=granularity=fine,compact,1,0
-
-BATCH_SIZE=116
 
 python -m intel_extension_for_pytorch.cpu.launch \
     --use_default_allocator \

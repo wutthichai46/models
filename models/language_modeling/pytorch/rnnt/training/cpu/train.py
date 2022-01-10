@@ -424,6 +424,31 @@ def main(args):
 
     args.local_rank = os.environ.get('LOCAL_RANK', args.local_rank)
     # set up distributed training
+    cpu_distributed_training = False
+    if torch.distributed.is_available() and int(os.environ.get('PMI_SIZE', '0')) > 1:
+        print('Distributed training with DDP')
+        os.environ['RANK'] = os.environ.get('PMI_RANK', '0')
+        os.environ['WORLD_SIZE'] = os.environ.get('PMI_SIZE', '1')
+        if not 'MASTER_ADDR' in os.environ:
+            os.environ['MASTER_ADDR'] = args.master_addr
+        if not 'MASTER_PORT' in os.environ:
+            os.environ['MASTER_PORT'] = args.port
+
+        # Initialize the process group with ccl backend
+        if args.backend == 'ccl':
+            import torch_ccl
+        dist.init_process_group(
+                backend=args.backend                
+        )
+        cpu_distributed_training = True
+        if torch.distributed.is_initialized():
+            print("Torch distributed is initialized.")
+            args.rank = torch.distributed.get_rank()
+            args.world_size = torch.distributed.get_world_size()
+        else:
+            print("Torch distributed is not initialized.")
+            args.rank = 0
+            args.world_size = 1
 
     multi_gpu = False
     if multi_gpu:
@@ -653,7 +678,6 @@ def parse_args():
     parser.add_argument("--profiling", action='store_true', help='do profiling', default=False)
     args=parser.parse_args()
     return args
-
 
 if __name__=="__main__":
     args = parse_args()

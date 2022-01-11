@@ -174,15 +174,31 @@ def main():
 
     args = parser.parse_args()
 
-    num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
-    args.distributed = num_gpus > 1
+    args.distributed = False
+    if torch.distributed.is_available() and int(os.environ.get('PMI_SIZE', '0')) > 1:
+        print('Distributed training with DDP')
+        os.environ['RANK'] = os.environ.get('PMI_RANK', '0')
+        os.environ['WORLD_SIZE'] = os.environ.get('PMI_SIZE', '1')
+        if not 'MASTER_ADDR' in os.environ:
+            os.environ['MASTER_ADDR'] = args.master_addr
+        if not 'MASTER_PORT' in os.environ:
+            os.environ['MASTER_PORT'] = args.port
 
-    if args.distributed:
-        torch.cuda.set_device(args.local_rank)
+        # Initialize the process group with ccl backend
+        if args.backend == 'ccl':
+            import torch_ccl
         torch.distributed.init_process_group(
-            backend="nccl", init_method="env://"
+            backend=args.backend
         )
-        synchronize()
+        args.distributed = True
+        if torch.distributed.is_initialized():
+            print("Torch distributed is initialized.")
+            args.rank = torch.distributed.get_rank()
+            args.world_size = torch.distributed.get_world_size()
+        else:
+            print("Torch distributed is not initialized.")
+            args.rank = 0
+            args.world_size = 1
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)

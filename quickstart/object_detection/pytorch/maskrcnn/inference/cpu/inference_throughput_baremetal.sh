@@ -68,9 +68,10 @@ export KMP_AFFINITY=granularity=fine,compact,1,0
 
 export TRAIN=0
 
-BATCH_SIZE=112
+PRECISION=$1
+BATCH_SIZE=168
 
-rm -rf ${OUTPUT_DIR}/throughput_log*
+rm -rf ${OUTPUT_DIR}/maskrcnn_${PRECISION}_inference_throughput*
 
 python -m intel_extension_for_pytorch.cpu.launch \
     --enable_jemalloc \

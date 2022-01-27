@@ -815,6 +815,15 @@ def run():
                         continue
 
                     X, lS_o, lS_i, T, W, CBPP = unpack_batch(inputBatch)
+                    if ext_dist.my_size > 1:
+                        local_bs = X.size()[0] // ext_dist.my_size
+                        rank_id = dlrm.rank
+                        X = X[rank_id * local_bs: (rank_id + 1) * local_bs]
+                        T = T[rank_id * local_bs: (rank_id + 1) * local_bs]
+                        global_bs = local_bs * ext_dist.my_size
+                        lS_o = lS_o[:, :global_bs]
+                        lS_i = lS_i[:, :global_bs]
+
                     if isinstance(dlrm.emb_l, ipex.nn.modules.MergedEmbeddingBagWithSGD):
                         n_tables = lS_i.shape[0]
                         idx = [lS_i[i] for i in range(n_tables)]

@@ -41,7 +41,6 @@ RUN apt-get update && \
     bash \
     build-essential \
     curl \
-    git \
     libffi-dev \
     libssl-dev \
     python3 \
@@ -55,7 +54,6 @@ RUN pip3 install --upgrade pip==20.3.4 && \
          cerberus \
          'cryptography<=3.2.1' \
          'docker==4.2.2' \
-         GitPython \
          ndg-httpsclient \
          pyasn1 \
          pyopenssl \

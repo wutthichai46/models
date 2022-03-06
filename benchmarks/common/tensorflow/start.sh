@@ -82,6 +82,7 @@ echo
 echo "Running on ${PLATFORM}"
 echo
 
+OS_PLATFORM=""
 if [[ ${PLATFORM} == "linux" ]]; then
     # Check the Linux PLATFORM distribution if CentOS, Debian or Ubuntu
     OS_PLATFORM=$(egrep '^(NAME)=' /etc/os-release)
@@ -112,6 +113,7 @@ if [[ ${PLATFORM} == "linux" ]]; then
       echo "${OS_PLATFORM} version ${OS_VERSION} is not currently supported."
       exit 1
     fi
+
     echo "Running on ${OS_PLATFORM} version ${OS_VERSION} is supported."
 fi
 
@@ -256,9 +258,6 @@ if [[ $NUMA_CORES_PER_INSTANCE != "None" || $SOCKET_ID != "-1" || $NUM_CORES != 
   INSTALL_NUMACTL="True"
 elif [[ $MODEL_NAME == "bert_large" && $MODE == "training" && $MPI_NUM_PROCESSES != "None" ]]; then
   # BERT large training with MPI uses numactl
-  INSTALL_NUMACTL="True"
-elif [[ $MODEL_NAME == "wide_deep" ]]; then
-  # TODO: Why Wide & Deep uses numactl always
   INSTALL_NUMACTL="True"
 fi
 

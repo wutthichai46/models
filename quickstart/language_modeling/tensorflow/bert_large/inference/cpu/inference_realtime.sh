@@ -59,10 +59,11 @@ for i in "${!input_dirs[@]}"; do
     exit 1
   fi
 done
-
+num_inter_threads=" --num-inter-threads 3 "
 if [ -z "${PRETRAINED_MODEL}" ]; then
     if [[ $PRECISION == "int8" ]]; then
         PRETRAINED_MODEL="${MODEL_DIR}/pretrained_model/bert_large_int8_pretrained_model.pb"
+        num_inter_threads=" --num-inter-threads 1 "
     elif [[ $PRECISION == "bfloat16" ]]; then
         PRETRAINED_MODEL="${MODEL_DIR}/pretrained_model/bert_large_bfloat16_pretrained_model.pb"
     elif [[ $PRECISION == "fp32" ]]; then
@@ -99,8 +100,7 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
   --numa-cores-per-instance ${CORES_PER_INSTANCE} \
   --checkpoint ${CHECKPOINT_DIR} \
   --num-intra-threads 8 \
-  --num-inter-threads 3 \
-  --warmup-steps=50 --steps=350 \
+  ${num_inter_threads} \
   --benchmark-only \
   $@ \
   -- DEBIAN_FRONTEND=noninteractive \

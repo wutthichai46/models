@@ -7,7 +7,7 @@ This document has instructions for running RNN-T training using Intel-optimized 
 ## Bare Metal
 ### General setup
 
-Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, TorchVison and Jemalloc.
+Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, TorchVison, Torch-CCL and Jemalloc.
 
 ### Model Specific Setup
 * Install dependencies
@@ -16,7 +16,8 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
   bash ${MODEL_DIR}/quickstart/language_modeling/pytorch/rnnt/training/cpu/install_dependency.sh
   ```
 
-* Download and preprocess RNN-T dataset: Dataset takes up 60+ GB disk space. After they are decompressed, they will need 60GB more disk space. Next step is preprocessing dataset, it will generate 110+ GB WAV file. Please make sure the disk space is enough.
+* Download and preprocess RNN-T dataset:
+  Dataset takes up 60+ GB disk space. After they are decompressed, they will need 60GB more disk space. Next step is preprocessing dataset, it will generate 110+ GB WAV file. Please make sure the disk space is enough.
   ```bash
   export DATASET_DIR=#Where_to_save_Dataset
   bash ${MODEL_DIR}/quickstart/language_modeling/pytorch/rnnt/training/cpu/download_dataset.sh
@@ -40,6 +41,13 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 * Set ENV to use AMX if you are using SPR
   ```bash
   export DNNL_MAX_CPU_ISA=AVX512_CORE_AMX
+  ```
+* Set ENV to use multi-node distributed training (no need for single-node multi-sockets)
+
+  In this case, we use data-parallel distributed training and every rank will hold same model replica. The NNODES is the number of ip in the HOSTFILE. To use multi-nodes distributed training you should firstly setup the passwordless login (you can refer to [link](https://linuxize.com/post/how-to-setup-passwordless-ssh-login/)) between these nodes. 
+  ```bash
+  export NNODES=#your_node_number
+  export HOSTFILE=your_ip_list_file #one ip per line
   ```
 
 ## Quick Start Scripts

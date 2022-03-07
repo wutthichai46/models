@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #
 # Copyright (c) 2021 Intel Corporation
 #
@@ -16,13 +15,16 @@
 # limitations under the License.
 #
 
-MODEL_DIR=${MODEL_DIR-$PWD}
-#export DNNL_MAX_CPU_ISA=AVX512_CORE_AMX
+MODEL_DIR=${MODEL_DIR-../../../../../../}
 
+#export DNNL_MAX_CPU_ISA=AVX512_CORE_AMX
 ARGS="--benchmark"
 precision=fp32
-
 batch_size=224
+
+if [[ "$1" == *"avx"* ]]; then
+    unset DNNL_MAX_CPU_ISA
+fi
 
 if [[ "$1" == "bf16" ]]
 then
@@ -30,27 +32,14 @@ then
     precision=bf16
     batch_size=448
     echo "### running bf16 mode"
-elif [[ $1 == "fp32" ]]; then
+elif [[ $1 == "fp32" || $1 == "avx-fp32" ]]; then
     echo "### running FP32 mode"
 
 else
     echo "The specified precision '$1' is unsupported."
-    echo "Supported precisions are: fp32, bf16"
+    echo "Supported precisions are: fp32, avx-fp32, bf16"
     exit 1
 fi
-<<<<<<< HEAD
-rm -rf ${OUTPUT_DIR}/throughput_log_phase1*
-#this is the path of model and enwiki-20200101 on mlp-sdp-spr-4150 machine 
-#you can also refer to https://github.com/mlcommons/training/tree/master/language_model/tensorflow/bert
-DATASET_DIR=${DATASET_DIR-/pyt_dataset/enwiki-20200101/dataset/tfrecord_dir}
-BERT_MODEL_CONFIG=${BERT_MODEL_CONFIG-/pyt_dataset/enwiki-20200101/training/language_model/tensorflow/bert/cleanup_scripts/wiki/config.json}
-TRAIN_SCRIPT=${TRAIN_SCRIPT:-${MODEL_DIR}/models/language_modeling/pytorch/bert_large/training/run_pretrain_mlperf.py}
-OUTPUT_DIR=${OUTPUT_DIR:-${PWD}}
-work_space=${work_space:-${OUTPUT_DIR}}
-python -m intel_extension_for_pytorch.cpu.launch --socket_id 0 --log_path=${OUTPUT_DIR} --log_file_prefix="./throughput_log_phase1_${precision}" ${TRAIN_SCRIPT} \
-    --train_file ${DATASET_DIR}/seq_128/part-00000-of-00500_128 \
-    --validation_file ${DATASET_DIR}/seq_128/part-00000-of-00500_128 \
-=======
 
 export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:9000000000,muzzy_decay_ms:9000000000";
 BERT_MODEL_CONFIG=${BERT_MODEL_CONFIG-~/dataset/checkpoint/config.json}
@@ -67,14 +56,15 @@ params="--train_batch_size=$LBS     --learning_rate=3.5e-4     --opt_lamb_beta_1
 python -m intel_extension_for_pytorch.cpu.launch --throughput_mode --enable_jemalloc --log_path=${OUTPUT_DIR} --log_file_prefix="./throughput_log_phase1_${precision}" ${TRAIN_SCRIPT} \
     --input_dir ${DATASET_DIR}/2048_shards_uncompressed_128/ \
     --eval_dir ${DATASET_DIR}/eval_set_uncompressed/ \
->>>>>>> 8fb9dc117... Enable jemalloc for BERT throughput mode (#375)
     --model_type 'bert' \
     --benchmark \
-    --output_dir model_save \
+    --output_dir $OUTPUT_DIR/model_save \
     --dense_seq_output \
-    $ARGS \
     --config_name ${BERT_MODEL_CONFIG} \
-    --per_device_train_batch_size ${batch_size} \
+    $ARGS \
+    $params \
+    
+
 
 throughput=$(grep 'Throughput:' ${OUTPUT_DIR}/throughput_log_phase1_${precision}* |sed -e 's/.*Throughput//;s/[^0-9.]//g' |awk '
 BEGIN {

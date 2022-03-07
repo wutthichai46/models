@@ -92,6 +92,10 @@ NUM_BATCH=50000 bash training.sh
 
 # Or, run quickstart script for testing fully convergency
 bash training.sh
+
+# Run quickstart to distribute training dlrm on 2 sockets
+# Note, you need to follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Torch-CCL and run this command on the machine which sockets larger than 2
+NUM_BATCH=10000 bash distribute_training.sh
 ```
 
 <!--- 80. License -->

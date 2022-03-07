@@ -56,11 +56,8 @@ def train(cfg, local_rank, distributed, bf16=False, iterations=-1, iter_warmup=-
     scheduler = make_lr_scheduler(cfg, optimizer)
 
     if distributed:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[local_rank], output_device=local_rank,
-            # this should be removed if we update BatchNorm stats
-            broadcast_buffers=False,
-        )
+        device_ids = None
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=device_ids, find_unused_parameters=True)
 
     arguments = {}
     arguments["iteration"] = 0
@@ -171,6 +168,11 @@ def main():
                         help='number of total iterations to run')
     parser.add_argument('--iter-warmup', default=-1, type=int, metavar='N',
                         help='number of warm-up iterations to run')
+    parser.add_argument("--world-size", default=1, type=int, help='world size')
+    parser.add_argument("--master-addr", default='127.0.0.1', type=str, help='Master Addr')
+    parser.add_argument("--port", default='29500', type=str, help='Port')
+    parser.add_argument("--rank", default=0, type=int, help='rank')
+    parser.add_argument('--backend', default='gloo', type=str, help='DDP backend, default to gloo')
 
     args = parser.parse_args()
 
@@ -188,7 +190,7 @@ def main():
         if args.backend == 'ccl':
             import torch_ccl
         torch.distributed.init_process_group(
-            backend=args.backend
+                backend=args.backend                
         )
         args.distributed = True
         if torch.distributed.is_initialized():
@@ -209,7 +211,6 @@ def main():
         mkdir(output_dir)
 
     logger = setup_logger("maskrcnn_benchmark", output_dir, get_rank())
-    logger.info("Using {} GPUs".format(num_gpus))
     logger.info(args)
 
     logger.info("Collecting env info (might take some time)")

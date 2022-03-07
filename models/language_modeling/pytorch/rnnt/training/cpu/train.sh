@@ -74,10 +74,9 @@ elif [ "$1" = "fp32" ] ; then
     PREC="--fp32"
     precision="fp32"
     echo "### running fp32 datatype"
-fi
-
-if [ "$PRECISION" = "fp16" ] ; then
-  PREC="--fp16"
+else
+    echo "The specified precision '${1}' is unsupported."
+    echo "Supported precisions now are: fp32 and bf16"
 fi
 
 IPEX="--ipex"
@@ -98,7 +97,6 @@ fi
 CMD=" --batch_size=$BATCH_SIZE"
 CMD+=" --eval_batch_size=$EVAL_BATCH_SIZE"
 CMD+=" --num_epochs=$EPOCHS"
-# CMD+=" --num_steps=250"
 CMD+=" --output_dir=$RESULT_DIR"
 CMD+=" --model_toml=$MODEL_CONFIG"
 CMD+=" --lr=$LEARNING_RATE"
@@ -136,8 +134,10 @@ rm -rf ${OUTPUT_DIR}/throughput_log*
 python -m intel_extension_for_pytorch.cpu.launch \
     --use_default_allocator \
     --throughput_mode \
+    --log_path=${OUTPUT_DIR} \
+    --log_file_prefix="./throughput_log_${precision}" \
     ${MODEL_DIR}/models/language_modeling/pytorch/rnnt/training/cpu/train.py \
-    $CMD 2>&1 | tee ${OUTPUT_DIR}/throughput_log.txt
+    $CMD
 
 # For the summary of results
 wait

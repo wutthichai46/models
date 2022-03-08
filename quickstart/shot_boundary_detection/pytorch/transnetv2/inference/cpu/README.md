@@ -39,7 +39,6 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 |  DataType   | Throughput  |  Latency    |
 | ----------- | ----------- | ----------- |
 | FP32        | bash inference_throughput.sh fp32 | bash inference_realtime.sh fp32 |
-| BF16        | bash inference_throughput.sh bf16 | bash inference_realtime.sh bf16 |
 
 
 ## Run the model

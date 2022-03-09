@@ -99,7 +99,6 @@ For information on running more advanced use cases using the workload containers
 | Object Detection        | [Mask R-CNN](https://arxiv.org/abs/1703.06870)                | Inference  | | [FP32 BFloat16**](/quickstart/object_detection/pytorch/maskrcnn/inference/cpu/README.md) |
 | Object Detection        | [Mask R-CNN](https://arxiv.org/abs/1703.06870)                | Training   | | [FP32 BFloat16**](/quickstart/object_detection/pytorch/maskrcnn/training/cpu/README.md) |
 | Object Detection        | [Mask R-CNN ResNet50 FPN](https://arxiv.org/abs/1703.06870)   | Inference  | | [FP32](/quickstart/object_detection/pytorch/maskrcnn_resnet50_fpn/inference/cpu/README.md) |
-| Object Detection        | [RetinaNet ResNet-50 FPN](https://arxiv.org/abs/1708.02002)   | Inference  | | [FP32](/quickstart/object_detection/pytorch/retinanet_resnet50_fpn/inference/cpu/README.md) |
 | Object Detection        | [SSD-ResNet34](https://arxiv.org/abs/1512.02325)              | Inference  | | [FP32 Int8 BFloat16**](/quickstart/object_detection/pytorch/ssd-resnet34/inference/cpu/README.md) |
 | Object Detection        | [SSD-ResNet34](https://arxiv.org/abs/1512.02325)              | Training   | | [FP32 BFloat16**](/quickstart/object_detection/pytorch/ssd-resnet34/training/cpu/README.md) |
 | Recommendation          | [DLRM](https://arxiv.org/pdf/1906.00091.pdf)         | Inference | | [FP32 Int8 BFloat16**](/quickstart/recommendation/pytorch/dlrm/inference/cpu/README.md) |

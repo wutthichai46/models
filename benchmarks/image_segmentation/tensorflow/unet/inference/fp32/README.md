@@ -36,7 +36,7 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
         <li><a href="https://pypi.org/project/intel-tensorflow/1.15.2/">intel-tensorflow==1.15.2</a>
         <li>numactl
         <li>numpy==1.16.3
-        <li>Pillow>=8.1.2
+        <li>Pillow>=9.3.0
         <li>matplotlib
         <li>click
         <li>wget
@@ -77,9 +77,11 @@ Once the environment variables are all set, you can run a
 # cd to your model zoo directory
 cd models
 
-export OUTPUT_DIR=<directory where log files will be written>
+export OUTPUT_DIR=<path to the directory where log files will be written>
 export TF_UNET_DIR=<path to the TF UNet directory tf_unet>
 export PRETRAINED_MODEL=<path to the pretrained model>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+export BATCH_SIZE=<customized batch size value>
 
 ./quickstart/image_segmentation/tensorflow/unet/inference/cpu/fp32/fp32_inference.sh
 ```

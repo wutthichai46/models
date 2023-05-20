@@ -7,7 +7,7 @@ This document has instructions for running RNN-T inference using Intel-optimized
 ## Bare Metal
 ### General setup
 
-Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, TorchVison and Jemalloc.
+Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Miniconda and build Pytorch, IPEX, TorchVison and Jemalloc.
 
 ### Model Specific Setup
 * Install dependencies
@@ -32,7 +32,7 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 
   The jemalloc should be built from the [General setup](#general-setup) section.
   ```bash
-  export LD_PRELOAD="path/lib/libjemalloc.so":$LD_PRELOAD
+  export LD_PRELOAD="<path to the jemalloc directory>/lib/libjemalloc.so":$LD_PRELOAD
   export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:9000000000,muzzy_decay_ms:9000000000"
   ```
 
@@ -40,7 +40,7 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 
   IOMP should be installed in your conda env from the [General setup](#general-setup) section.
   ```bash
-  export LD_PRELOAD=path/lib/libiomp5.so:$LD_PRELOAD
+  export LD_PRELOAD=<path to the intel-openmp directory>/lib/libiomp5.so:$LD_PRELOAD
   ```
 
 * Set ENV to use AMX if you are using SPR
@@ -54,6 +54,7 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 | ----------- | ----------- | ----------- | ----------- |
 | FP32        | bash inference_throughput.sh fp32 | bash inference_realtime.sh fp32 | bash accuracy.sh fp32 |
 | BF16        | bash inference_throughput.sh bf16 | bash inference_realtime.sh bf16 | bash accuracy.sh bf16 |
+| BF32        | bash inference_throughput.sh bf32 | bash inference_realtime.sh bf32 | bash accuracy.sh bf32 |
 
 ## Run the model
 

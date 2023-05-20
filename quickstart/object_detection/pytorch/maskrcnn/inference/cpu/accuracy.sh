@@ -47,11 +47,14 @@ fi
 if [[ "$1" == "bf16" ]]; then
     ARGS="$ARGS --bf16"
     echo "### running bf16 datatype"
+elif [[ "$1" == "bf32" ]]; then
+    ARGS="$ARGS --bf32"
+    echo "### running bf32 datatype"
 elif [[ "$1" == "fp32" || "$1" == "avx-fp32" ]]; then
     echo "### running fp32 datatype"
 else
     echo "The specified precision '$1' is unsupported."
-    echo "Supported precisions are: fp32, avx-fp32, and bf16."
+    echo "Supported precisions are: fp32, avx-fp32, bf16, and bf32."
     exit 1
 fi
 
@@ -77,8 +80,15 @@ BATCH_SIZE=112
 
 rm -rf ${OUTPUT_DIR}/maskrcnn_${PRECISION}_accuracy*
 
-python -m intel_extension_for_pytorch.cpu.launch \
-    --enable_jemalloc \
+# check if stoch PYT or IPEX is installed on the system
+IPEX_ARGS=""
+pip list | grep intel-extension-for-pytorch
+if [[ "$?" == 0 ]]; then
+  IPEX_ARGS="-m intel_extension_for_pytorch.cpu.launch \
+    --enable_jemalloc"
+fi
+
+python ${IPEX_ARGS} \
     ${MODEL_DIR}/models/object_detection/pytorch/maskrcnn/maskrcnn-benchmark/tools/test_net.py \
     $ARGS \
     --config-file "${MODEL_DIR}/models/object_detection/pytorch/maskrcnn/maskrcnn-benchmark/configs/e2e_mask_rcnn_R_50_FPN_1x_coco2017_inf.yaml" \
@@ -90,7 +100,12 @@ python -m intel_extension_for_pytorch.cpu.launch \
 # For the summary of results
 wait
 
-accuracy=$(grep 'bbox AP:' ${OUTPUT_DIR}/maskrcnn_${PRECISION}_accuracy* |sed -e 's/.*Accuracy//;s/[^0-9.]//g')
-echo ""maskrcnn";"bbox AP:";$1;${BATCH_SIZE};${accuracy}" | tee -a ${OUTPUT_DIR}/summary.log
-accuracy=$(grep 'segm AP:' ${OUTPUT_DIR}/maskrcnn_${PRECISION}_accuracy* |sed -e 's/.*Accuracy//;s/[^0-9.]//g')
-echo ""maskrcnn";"segm AP:";$1;${BATCH_SIZE};${accuracy}" | tee -a ${OUTPUT_DIR}/summary.log
+source "${MODEL_DIR}/quickstart/common/utils.sh"
+_get_platform_type
+if [[ ${PLATFORM} == "linux" ]]; then
+    accuracy=$(grep 'bbox AP:' ${OUTPUT_DIR}/maskrcnn_${PRECISION}_accuracy* |sed -e 's/.*Accuracy//;s/[^0-9.]//g')
+    echo ""maskrcnn";"bbox AP:";$1;${BATCH_SIZE};${accuracy}" | tee -a ${OUTPUT_DIR}/summary.log
+    accuracy=$(grep 'segm AP:' ${OUTPUT_DIR}/maskrcnn_${PRECISION}_accuracy* |sed -e 's/.*Accuracy//;s/[^0-9.]//g')
+    echo ""maskrcnn";"segm AP:";$1;${BATCH_SIZE};${accuracy}" | tee -a ${OUTPUT_DIR}/summary.log
+fi
+

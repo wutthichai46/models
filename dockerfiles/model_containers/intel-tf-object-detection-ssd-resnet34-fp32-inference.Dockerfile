@@ -34,7 +34,7 @@ RUN apt-get update && \
         python-tk && \
     pip install requests
 
-ARG PY_VERSION="3.8"
+ARG PY_VERSION="3.9"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends --fix-missing \
@@ -64,7 +64,7 @@ RUN pip install \
         lxml \
         matplotlib \
         numpy>=1.17.4 \
-        'pillow>=8.1.2' && \
+        'pillow>=9.3.0' && \
     pip install pycocotools
 
 ARG TF_MODELS_DIR=/tensorflow/models
@@ -93,7 +93,7 @@ RUN apt-get update && \
 
 RUN pip install opencv-python
 
-RUN pip install tensorflow-addons==0.11.0
+RUN pip install tensorflow-addons==0.17.1
 
 ARG TF_BENCHMARKS_BRANCH="509b9d288937216ca7069f31cfb22aaa7db6a4a7"
 

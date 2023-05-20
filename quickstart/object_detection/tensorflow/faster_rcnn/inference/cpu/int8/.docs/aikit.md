@@ -27,7 +27,7 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
         <li>jupyter
         <li>lxml
         <li>matplotlib
-        <li>pillow>=8.1.2
+        <li>pillow>=9.3.0
         <li>pycocotools
         <li>A clone of the Model Zoo repo<br />
         <pre>git clone https://github.com/IntelAI/models.git</pre>
@@ -74,7 +74,7 @@ will be written, then run a [quickstart script](#quick-start-scripts).
 cd models
 
 export DATASET_DIR=<path to the coco dataset>
-export OUTPUT_DIR=<directory where log files will be written>
+export OUTPUT_DIR=<path to the directory where log files will be written>
 export TF_MODELS_DIR=<path to the TensorFlow models dir>
 export PRETRAINED_MODEL=<path to the pretrained model frozen graph file>
 

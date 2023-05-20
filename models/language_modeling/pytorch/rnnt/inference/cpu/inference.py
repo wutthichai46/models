@@ -62,11 +62,14 @@ def parse_args():
     parser.add_argument("--jit", action='store_true', help='use jit', default=False)
     parser.add_argument("--mix-precision", action='store_true', help='use bf16', default=False)
     parser.add_argument("--profiling", action='store_true', help='do profiling', default=False)
+    parser.add_argument("--dump_tracing", action='store_true', help='dump the profiler tracing result', default=False)
     parser.add_argument("--sort_by_duration", action='store_true', help='sort sequence by duration', default=False)
     parser.add_argument('--calibration', action='store_true', default=False,
                     help='doing int8 calibration step')
     parser.add_argument('--configure-dir', default='configure.json', type=str, metavar='PATH',
                     help = 'path to int8 configures, default file name is configure.json')
+    parser.add_argument('--bf32', action='store_true', default=False,
+                        help='enable ipex bf32 path')    
     return parser.parse_args()
 
 def eval(
@@ -113,7 +116,7 @@ def eval(
             print("INFERENCE TIME\t\t: {} ms".format((t1-t0)*1000.0))
             print("TRANSCRIPT\t\t:", hypotheses[0])
             return
-        steps_per_epoch = len(data_layer)
+        steps_per_epoch = len(data_layer.data_iterator)
         total_steps = args.steps if args.steps is not None else steps_per_epoch
         test_epoches = int(total_steps / steps_per_epoch)
         print('Evaluating RNNT: Steps per Epoch {} total Steps {}'.format(steps_per_epoch, total_steps))
@@ -144,6 +147,7 @@ def eval(
                                 break
                 print("\nstart measure performance, measure steps = ", total_steps)
                 total_time = 0
+                timeBuff = []
                 with tqdm(total=total_steps) as pbar:
                     for epoch in range(test_epoches + 1):
                         for it, data in enumerate(data_layer.data_iterator):
@@ -151,12 +155,20 @@ def eval(
                                 break
                             t_audio_signal_e, t_a_sig_length_e, t_transcript_e, t_transcript_len_e = audio_processor(data)
                             if args.profiling:
-                                # with torch.autograd.profiler.profile(args.profiling) as prof:
-                                with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler('./log')) as prof:
-                                    conf = None
-                                    t0 = time.perf_counter()
-                                    t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
-                                    t1 = time.perf_counter()
+                                if args.dump_tracing:
+                                    with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU], record_shapes=True) as prof, torch.profiler.record_function("model_inference"):
+                                        conf = None
+                                        t0 = time.perf_counter()
+                                        t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                        t1 = time.perf_counter()
+                                    prof.export_chrome_trace("rnnt_trace_iter_%d.json" % it)
+                                else:                                    
+                                    with torch.autograd.profiler.profile(args.profiling) as prof:
+                                        conf = None
+                                        t0 = time.perf_counter()
+                                        t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                        t1 = time.perf_counter()
+                                    print(prof.key_averages().table(sort_by="self_cpu_time_total"))
                             else:
                                 conf = None
                                 t0 = time.perf_counter()
@@ -164,6 +176,7 @@ def eval(
                                 t1 = time.perf_counter()
 
                             total_time += (t1 - t0)
+                            timeBuff.append(t1 - t0)
 
                             values_dict = dict(
                                 predictions=[t_predictions_e],
@@ -181,6 +194,8 @@ def eval(
                             print("\nstart warm up, warmp_up steps = ", args.warm_up)
                             for it, data in enumerate(tqdm(data_layer.data_iterator)):
                                 t_audio_signal_e, t_a_sig_length_e, t_transcript_e, t_transcript_len_e = audio_processor(data)
+                                t_audio_signal_e = t_audio_signal_e.to(torch.bfloat16)
+                                
                                 conf = None
                                 t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
                                 
@@ -190,6 +205,7 @@ def eval(
                         # measure performance
                         print("\nstart measure performance, measure steps = ", total_steps)
                         total_time = 0
+                        timeBuff = []
                         # with torch.autograd.profiler.profile(args.profiling) as prof:
                         with tqdm(total=total_steps) as pbar:
                             for epoch in range(test_epoches + 1):
@@ -197,13 +213,22 @@ def eval(
                                     if epoch * steps_per_epoch + it >= total_steps:
                                         break
                                     t_audio_signal_e, t_a_sig_length_e, t_transcript_e, t_transcript_len_e = audio_processor(data)
+                                    t_audio_signal_e = t_audio_signal_e.to(torch.bfloat16)
                                     if args.profiling:
-                                        # with torch.autograd.profiler.profile(args.profiling) as prof:
-                                        with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler('./log')) as prof:
-                                            conf = None
-                                            t0 = time.perf_counter()
-                                            t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
-                                            t1 = time.perf_counter()
+                                        if args.dump_tracing:
+                                            with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU], record_shapes=True) as prof, torch.profiler.record_function("model_inference"):
+                                                conf = None
+                                                t0 = time.perf_counter()
+                                                t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                                t1 = time.perf_counter()
+                                            prof.export_chrome_trace("rnnt_trace_iter_%d.json" % it)
+                                        else:
+                                            with torch.autograd.profiler.profile(args.profiling) as prof:
+                                                conf = None
+                                                t0 = time.perf_counter()
+                                                t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                                t1 = time.perf_counter()
+                                            print(prof.key_averages().table(sort_by="self_cpu_time_total"))                                          
                                     else:
                                         conf = None
                                         t0 = time.perf_counter()
@@ -211,6 +236,7 @@ def eval(
                                         t1 = time.perf_counter()
 
                                     total_time += (t1 - t0)
+                                    timeBuff.append(t1 - t0)
 
                                     values_dict = dict(
                                         predictions=[t_predictions_e],
@@ -235,6 +261,7 @@ def eval(
                     # measure performance
                     print("\nstart measure performance, measure steps = ", total_steps)
                     total_time = 0
+                    timeBuff = []                    
                     # with torch.autograd.profiler.profile(args.profiling) as prof:
                     with tqdm(total=total_steps) as pbar:
                         for epoch in range(test_epoches + 1):
@@ -243,12 +270,20 @@ def eval(
                                     break
                                 t_audio_signal_e, t_a_sig_length_e, t_transcript_e, t_transcript_len_e = audio_processor(data)
                                 if args.profiling:
-                                    # with torch.autograd.profiler.profile(args.profiling) as prof:
-                                    with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler('./log')) as prof:
-                                        conf = None
-                                        t0 = time.perf_counter()
-                                        t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
-                                        t1 = time.perf_counter()
+                                    if args.dump_tracing:
+                                        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU], record_shapes=True) as prof, torch.profiler.record_function("model_inference"):
+                                            conf = None
+                                            t0 = time.perf_counter()
+                                            t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                            t1 = time.perf_counter()
+                                        prof.export_chrome_trace("rnnt_trace_iter_%d.json" % it)
+                                    else:
+                                        with torch.autograd.profiler.profile(args.profiling) as prof:
+                                            conf = None
+                                            t0 = time.perf_counter()
+                                            t_predictions_e = greedy_decoder.decode(t_audio_signal_e, t_a_sig_length_e, args, conf)
+                                            t1 = time.perf_counter()
+                                        print(prof.key_averages().table(sort_by="self_cpu_time_total"))                                        
                                 else:
                                     conf = None
                                     t0 = time.perf_counter()
@@ -256,6 +291,7 @@ def eval(
                                     t1 = time.perf_counter()
 
                                 total_time += (t1 - t0)
+                                timeBuff.append(t1 - t0)                                
 
                                 values_dict = dict(
                                     predictions=[t_predictions_e],
@@ -300,10 +336,13 @@ def eval(
                         pickle.dump(logits, f, protocol=pickle.HIGHEST_PROTOCOL)
 
             if args.steps:
-                total_samples = args.steps * args.batch_size
+                total_samples = test_epoches * len(data_layer) + (total_steps - test_epoches * steps_per_epoch) * args.batch_size
             else:
                 total_samples = len(data_layer)
 
+            timeBuff = np.asarray(timeBuff)
+            p99 = np.percentile(timeBuff, 99)
+            print('P99 Latency {:.2f} ms'.format(p99*1000))
             print("total samples tested: ", total_samples)
             print("total time (encoder + decoder, excluded audio processing): ", total_time, "s")
             print("dataset size: ", len(data_layer))
@@ -375,11 +414,13 @@ def main(args):
     if args.ipex:
         import intel_extension_for_pytorch as ipex
         from rnn import IPEXStackTime
-        model.joint_net.eval()
+        if args.bf32:
+            ipex.set_fp32_math_mode(mode=ipex.FP32MathMode.BF32, device="cpu")
+        model.eval()
         data_type = torch.bfloat16 if args.mix_precision else torch.float32
         if model.encoder["stack_time"].factor == 2:
             model.encoder["stack_time"] = IPEXStackTime(model.encoder["stack_time"].factor)
-        model.joint_net = ipex.optimize(model.joint_net, dtype=data_type, auto_kernel_selection=True)
+        model = ipex.optimize(model, dtype=data_type, auto_kernel_selection=True, optimize_lstm=True)
         model.prediction["embed"] = model.prediction["embed"].to(data_type)
         if args.jit:
             print("running jit path")
@@ -405,7 +446,9 @@ def main(args):
         if args.steps is not None:
             print('-----------------')
             # print('Have {0} examples to eval on.'.format(args.steps * args.batch_size * (1 if not torch.distributed.is_available() else torch.distributed.get_world_size())))
-            print('Have {0} examples to eval on.'.format(args.steps * args.batch_size * (1 if not torch.distributed.is_initialized() else torch.distributed.get_world_size())))
+            test_epoches = int(args.steps / step_per_epoch)
+            total_samples = test_epoches * len(data_layer) + (args.steps - test_epoches * step_per_epoch) * args.batch_size
+            print('Have {0} examples to eval on.'.format(total_samples * (1 if not torch.distributed.is_initialized() else torch.distributed.get_world_size())))
             print('Have {0} warm up steps / (gpu * epoch).'.format(args.warm_up))
             print('Have {0} measure steps / (gpu * epoch).'.format(args.steps))
             print('-----------------')
@@ -435,7 +478,7 @@ def main(args):
 
     model.eval()
     if args.ipex:
-        ipex.nn.utils._model_convert.replace_lstm_with_ipex_lstm(model)
+        ipex.nn.utils._model_convert.replace_lstm_with_ipex_lstm(model, None)
 
     greedy_decoder = RNNTGreedyDecoder(len(ctc_vocab) - 1, model.module if multi_gpu else model)
 

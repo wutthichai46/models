@@ -49,7 +49,7 @@ To run on bare metal, the following prerequisites must be installed in your envi
 * numactl
 * wget
 * IPython[all]
-* Pillow>=8.1.2
+* Pillow>=9.3.0
 * cython
 * h5py
 * imgaug
@@ -77,6 +77,8 @@ cd maskrcnn-fp32-inference
 export DATASET_DIR=<path to the dataset>
 export OUTPUT_DIR=<directory where log files will be written>
 export MODEL_SRC_DIR=<path to the Mask RCNN models repo>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+export BATCH_SIZE=<customized batch size value>
 
 git clone https://github.com/matterport/Mask_RCNN.git ${MODEL_SRC_DIR}
 pushd ${MODEL_SRC_DIR}
@@ -98,10 +100,13 @@ volume mounts for the dataset and an output directory.
 ```
 DATASET_DIR=<path to the dataset>
 OUTPUT_DIR=<directory where log files will be written>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+export BATCH_SIZE=<customized batch size value>
 
 docker run \
   --env DATASET_DIR=${DATASET_DIR} \
   --env OUTPUT_DIR=${OUTPUT_DIR} \
+  --env BATCH_SIZE=${BATCH_SIZE} \
   --env http_proxy=${http_proxy} \
   --env https_proxy=${https_proxy} \
   --volume ${DATASET_DIR}:${DATASET_DIR} \

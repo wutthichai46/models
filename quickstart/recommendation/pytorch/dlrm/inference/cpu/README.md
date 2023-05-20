@@ -9,7 +9,7 @@ Intel-optimized PyTorch for bare metal.
 
 ## Bare Metal
 ### General Setup
-Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, and Jemalloc.
+Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Miniconda and build Pytorch, IPEX, and Jemalloc.
 
 ### Model Specific Setup
 
@@ -23,7 +23,7 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 
   The jemalloc should be built from the [General setup](#general-setup) section.
   ```bash
-  export LD_PRELOAD="path/lib/libjemalloc.so":$LD_PRELOAD
+  export LD_PRELOAD="<path to the jemalloc directory>/lib/libjemalloc.so":$LD_PRELOAD
   export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:9000000000,muzzy_decay_ms:9000000000"
   ```
 
@@ -31,7 +31,7 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 
   IOMP should be installed in your conda env from the [General setup](#general-setup) section.
   ```bash
-  export LD_PRELOAD=path/lib/libiomp5.so:$LD_PRELOAD
+  export LD_PRELOAD=<path to the intel-openmp directory>/lib/libiomp5.so:$LD_PRELOAD
   ```
 
 * Set ENV to use AMX if you are using SPR
@@ -65,8 +65,8 @@ scripts will automatically use the preprocessed data.
 
 | Script name | Description |
 |-------------|-------------|
-| `inference_performance.sh` | Run inference to verify performance for the specified precision (fp32, avx-fp32, int8, avx-int8, or bf16). |
-| `accuracy.sh` | Measures the inference accuracy for the specified precision (fp32, avx-fp32, int8, avx-int8, or bf16). |
+| `inference_performance.sh` | Run inference to verify performance for the specified precision (fp32, bf32, bf16, or int8). |
+| `accuracy.sh` | Measures the inference accuracy for the specified precision (fp32, bf32, bf16, or int8). |
 
 ## Run the model
 

@@ -30,6 +30,16 @@ then
     precision=bf16
     ARGS="$ARGS --bf16"
     echo "### running bf16 mode"
+elif [[ "$1" == "fp16" ]]
+then
+    precision=fp16
+    ARGS="$ARGS --fp16_cpu"
+    echo "### running fp16 mode"
+elif [[ "$1" == "bf32" ]]
+then
+    precision=bf32
+    ARGS="$ARGS --bf32"
+    echo "### running bf32 mode"
 elif [[ "$1" == "int8" || "$1" == "avx-int8" ]]
 then
     precision=int8
@@ -50,7 +60,7 @@ BATCH_SIZE=${BATCH_SIZE:-1}
 EVAL_DATA_FILE=${EVAL_DATA_FILE:-"${PWD}/squad1.1/dev-v1.1.json"}
 FINETUNED_MODEL=${FINETUNED_MODEL:-bert_squad_model}
 OUTPUT_DIR=${OUTPUT_DIR:-${PWD}}
-EVAL_SCRIPT=${EVAL_SCRIPT:-"./transformers/examples/question-answering/run_squad.py"}
+EVAL_SCRIPT=${EVAL_SCRIPT:-"./transformers/examples/legacy/question-answering/run_squad.py"}
 work_space=${work_space:-${OUTPUT_DIR}}
 
 python -m intel_extension_for_pytorch.cpu.launch --ninstance ${SOCKETS} --log_path=${OUTPUT_DIR} --log_file_prefix="./latency_log_${precision}" ${EVAL_SCRIPT} $ARGS --model_type bert --model_name_or_path ${FINETUNED_MODEL} --tokenizer_name bert-large-uncased-whole-word-masking-finetuned-squad  --do_eval --do_lower_case --predict_file $EVAL_DATA_FILE  --per_gpu_eval_batch_size $BATCH_SIZE --learning_rate 3e-5 --num_train_epochs 2.0 --max_seq_length 384 --doc_stride 128 --output_dir ./tmp --perf_begin_iter 20 --perf_run_iters 100 --use_jit --int8_config ${INT8_CONFIG} --use_share_weight --total_cores ${CORES}
@@ -73,5 +83,19 @@ sum = sum / i * INSTANCES_PER_SOCKET;
         printf("%.2f", sum);
 }')
 
+p99_latency=$(grep 'P99 Latency' ${OUTPUT_DIR}/latency_log* |sed -e 's/.*P99 Latency//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_PER_SOCKET '
+BEGIN {
+    sum = 0;
+    i = 0;
+    }
+    {
+        sum = sum + $1;
+        i++;
+    }
+END   {
+    sum = sum / i;
+    printf("%.3f ms", sum);
+}')
 echo $INSTANCES_PER_SOCKET
 echo ""BERT";"latency";${precision}; ${BATCH_SIZE};${throughput}" | tee -a ${OUTPUT_DIR}/summary.log
+echo ""BERT";"p99_latency";${precision}; ${BATCH_SIZE};${p99_latency}" | tee -a ${OUTPUT_DIR}/summary.log

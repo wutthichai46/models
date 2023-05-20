@@ -40,6 +40,8 @@ import torch.fx.experimental.optimization as optimization
 use_ipex = False
 if os.environ.get('USE_IPEX') == "1":
     import intel_extension_for_pytorch as ipex
+    from intel_extension_for_pytorch.quantization import prepare, convert
+    from torch.ao.quantization import MinMaxObserver, PerChannelMinMaxObserver, QConfig
     use_ipex = True
 
 def get_bs_per_stream(batch_size, stream_number):
@@ -135,6 +137,8 @@ def parse_args():
                     help='the end core to creat cpu pool')
     parser.add_argument('--accuracy-mode', action='store_true', default=False,
                         help='enable accuracy mode')
+    parser.add_argument('--bf32', action='store_true', default=False,
+                        help='enable ipex bf32 path')
     return parser.parse_args()
 
 
@@ -229,42 +233,45 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
     inference_time = AverageMeter('InferenceTime', ':6.3f')
     decoding_time = AverageMeter('DecodingTime', ':6.3f')
 
+    if args.bf32:
+        ipex.set_fp32_math_mode(mode=ipex.FP32MathMode.BF32, device="cpu")
+
+    # Disable TE, there 2 cat at the end of the forward.
+    # When the inputs of these 2 cat are fp32, there is a fused-cat-cat kernel by TE.
+    # This fused-cat-cat kernel is not efficient as the native cat operation.
+    torch._C._jit_set_texpr_fuser_enabled(False)
+
     Profilling_iterator = 99
     start = time.time()
     if args.int8:
         model = model.eval()
-        model_decode = SSD_R34_NMS(model, encoder)
+        model_decode = SSD_R34_NMS(model, encoder).eval()
         print('int8 conv_bn_fusion enabled')
         with torch.no_grad():
             model_decode.model.model = optimization.fuse(model_decode.model.model, inplace=False)
-
+            qconfig = QConfig(activation=MinMaxObserver.with_args(qscheme=torch.per_tensor_affine, dtype=torch.quint8),
+                    weight=PerChannelMinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_channel_symmetric))
+            
+            example_inputs = torch.randn( ((args.batch_size // args.number_instance) if args.use_multi_stream_module else args.batch_size), 3, 1200, 1200).to(memory_format=torch.channels_last)
+            model_decode.model = prepare(model_decode.model, qconfig, example_inputs=example_inputs, inplace=False)
             if args.calibration:
                 print("runing int8 LLGA calibration step not support in throughput benchmark")
             else:
                 print("INT8 LLGA start trace")
                 # insert quant/dequant based on configure.json
-                conf = ipex.quantization.QuantConf(configure_file=args.configure)
-                model_decode.eval()
-                if args.use_multi_stream_module:
-                    batch_per_stream = args.batch_size // args.number_instance
-                    print("batch_per_stream for multi_stream_module is:", batch_per_stream)
-                    model_decode = ipex.quantization.convert(model_decode, conf, torch.randn(batch_per_stream, 3, 1200, 1200).to(memory_format=torch.channels_last))
-                else:
-                    model_decode = ipex.quantization.convert(model_decode, conf, torch.randn(args.batch_size, 3, 1200, 1200).to(memory_format=torch.channels_last))
+                model_decode.model.load_qconf_summary(qconf_summary = args.configure)
+                model_decode.model = convert(model_decode.model)
+                with torch.no_grad():
+                   model_decode = torch.jit.trace(model_decode, example_inputs, check_trace=False).eval()
+                model_decode = torch.jit.freeze(model_decode)
+
                 print("done ipex default recipe.......................")
-                # freeze the module
-                # model = torch.jit._recursive.wrap_cpp_module(torch._C._freeze_module(model._c, preserveParameters=True))
-                # model_decode = torch.jit._recursive.wrap_cpp_module(torch._C._freeze_module(model_decode._c, preserveParameters=True))
 
                 # After freezing, run 1 time to warm up the profiling graph executor to insert prim::profile
                 # At the 2nd run, the llga pass will be triggered and the model is turned into an int8 model: prim::profile will be removed and will have LlgaFusionGroup in the graph
                 with torch.no_grad():
                     for i in range(2):
-                        # _ = model_decode(torch.randn(args.batch_size, 3, 1200, 1200).to(memory_format=torch.channels_last))
-                        if args.use_multi_stream_module:
-                            _ = model_decode(torch.randn(batch_per_stream, 3, 1200, 1200).to(memory_format=torch.channels_last))
-                        else:
-                            _ = model_decode(torch.randn(args.batch_size, 3, 1200, 1200).to(memory_format=torch.channels_last))
+                        _ = model_decode(example_inputs)
 
                 if args.use_throughput_benchmark:
 
@@ -305,6 +312,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                             exit(-1)
                         model_decode = ipex.cpu.runtime.MultiStreamModule(model_decode, num_streams=args.number_instance, cpu_pool=cpu_pool, concat_output=False)
                     time_consume = 0
+                    timeBuff = []
                     total_iteration = 0
                     for _ in range(epoch_number):
                         for nbatch, (img, img_id, img_size, bbox, label) in enumerate(val_dataloader):
@@ -316,6 +324,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                 step_time = time.time() - start_time
                                 print("time of step {0} is: {1}".format(total_iteration, step_time))
                                 time_consume += step_time
+                                timeBuff.append(step_time)
 
                             if args.accuracy_mode:
                                 results = []
@@ -353,6 +362,9 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                             if total_iteration == args.iteration:
                                 fps = args.batch_size * (args.iteration - args.warmup_iterations + 1) / time_consume
                                 avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                timeBuff = np.asarray(timeBuff)
+                                p99 = np.percentile(timeBuff, 99)
+                                print('P99 Latency {:.2f} ms'.format(p99*1000))
                                 print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(args.instance_number, avg_time, fps))
                                 break
                             total_iteration += 1
@@ -360,6 +372,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                     print('runing int8 real inputs inference pthread weight sharing path')
                     def run_model(m, tid):
                         time_consume = 0
+                        timeBuff =[]
                         with torch.no_grad():
                             total_iteration = 0
                             for _ in range(epoch_number):
@@ -371,9 +384,13 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                     m(img)
                                     if total_iteration >= args.warmup_iterations:
                                         time_consume += time.time() - start_time
+                                        timeBuff.append(time.time() - start_time)
                                     if total_iteration == args.iteration:
                                         fps = (args.iteration - args.warmup_iterations + 1) / time_consume
                                         avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                        timeBuff = np.asarray(timeBuff)
+                                        p99 = np.percentile(timeBuff, 99)
+                                        print('P99 Latency {:.2f} ms'.format(p99*1000))
                                         print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(tid, avg_time, fps))
                                         break
                                     total_iteration += 1
@@ -438,6 +455,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                 exit(-1)
                             model_decode = ipex.cpu.runtime.MultiStreamModule(model_decode, num_streams=args.number_instance, cpu_pool=cpu_pool, concat_output=False)
                         time_consume = 0
+                        timeBuff = []
                         total_iteration = 0
                         for _ in range(epoch_number):
                             for nbatch, (img, img_id, img_size, bbox, label) in enumerate(val_dataloader):
@@ -449,6 +467,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                     step_time = time.time() - start_time
                                     print("time of step {0} is: {1}".format(total_iteration, step_time))
                                     time_consume += step_time
+                                    timeBuff.append(step_time)
 
                                 if args.accuracy_mode:
                                     results = []
@@ -486,6 +505,9 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                 if total_iteration == args.iteration:
                                     fps = args.batch_size * (args.iteration - args.warmup_iterations + 1) / time_consume
                                     avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                    timeBuff = np.asarray(timeBuff)
+                                    p99 = np.percentile(timeBuff, 99)
+                                    print('P99 Latency {:.2f} ms'.format(p99*1000))
                                     print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(args.instance_number, avg_time, fps))
                                     break
                                 total_iteration += 1
@@ -493,6 +515,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                         print('bf16 pthread weight sharing path')
                         def run_model(m, tid):
                             time_consume = 0
+                            timeBuff = []
                             with torch.no_grad():
                                 total_iteration = 0
                                 for _ in range(epoch_number):
@@ -503,9 +526,13 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                         m(img)
                                         if total_iteration >= args.warmup_iterations:
                                             time_consume += time.time() - start_time
+                                            timeBuff.append(time.time() - start_time)
                                         if total_iteration == args.iteration:
                                             fps = (args.iteration - args.warmup_iterations + 1) / time_consume
                                             avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                            timeBuff = np.asarray(timeBuff)
+                                            p99 = np.percentile(timeBuff, 99)
+                                            print('P99 Latency {:.2f} ms'.format(p99*1000))
                                             print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(tid, avg_time, fps))
                                             break
                                         total_iteration += 1
@@ -525,7 +552,10 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                         print("OOB Autocast imperative path in throughput benchmark not support")
                         exit(-1)
             else:
-                print('autocast disabled, fp32 is used')
+                if args.bf32:
+                    print('autocast disabled, bf32 is used')
+                else:
+                    print('autocast disabled, fp32 is used')
                 print('enable nhwc')
                 model_decode.model = model_decode.model.to(memory_format=torch.channels_last)
                 if use_ipex:
@@ -537,6 +567,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                         batch_per_stream = (args.batch_size // args.number_instance) if args.use_multi_stream_module else args.batch_size
                         model_decode = torch.jit.trace(model_decode, torch.randn(batch_per_stream, 3, 1200, 1200).to(memory_format=torch.channels_last)).eval()
                     model_decode = torch.jit.freeze(model_decode)
+
                     if args.use_throughput_benchmark:
                         print('fp32 throughput benchmark')
                         bench = ThroughputBenchmark(model_decode)
@@ -565,6 +596,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                             model_decode = ipex.cpu.runtime.MultiStreamModule(model_decode, num_streams=args.number_instance, cpu_pool=cpu_pool, concat_output=False)
                         time_consume = 0
                         total_iteration = 0
+                        timeBuff = []
                         for _ in range(epoch_number):
                             for nbatch, (img, img_id, img_size, bbox, label) in enumerate(val_dataloader):
                                 img = img.to(memory_format=torch.channels_last)
@@ -575,6 +607,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                     step_time = time.time() - start_time
                                     print("time of step {0} is: {1}".format(total_iteration, step_time))
                                     time_consume += step_time
+                                    timeBuff.appemd(step_time)
 
                                 if args.accuracy_mode:
                                     results = []
@@ -612,6 +645,9 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                 if total_iteration == args.iteration:
                                     fps = args.batch_size * (args.iteration - args.warmup_iterations + 1) / time_consume
                                     avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                    timeBuff = np.asarray(timeBuff)
+                                    p99 = np.percentile(timeBuff, 99)
+                                    print('P99 Latency {:.2f} ms'.format(p99*1000))
                                     print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(args.instance_number, avg_time, fps))
                                     break
                                 total_iteration += 1
@@ -620,6 +656,7 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                         def run_model(m, tid):
                             time_consume = 0
                             total_iteration = 0
+                            timeBuff = []
                             for _ in range(epoch_number):
                                 for nbatch, (img, img_id, img_size, bbox, label) in enumerate(val_dataloader):
                                     if total_iteration >= args.warmup_iterations:
@@ -628,9 +665,13 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, args):
                                     m(img)
                                     if total_iteration >= args.warmup_iterations:
                                         time_consume += time.time() - start_time
+                                        timeBuff.append(time.time() - start_time)
                                     if total_iteration == args.iteration:
                                         fps = (args.iteration - args.warmup_iterations + 1) / time_consume
                                         avg_time = time_consume * 1000 / (args.iteration - args.warmup_iterations + 1)
+                                        timeBuff = np.asarray(timeBuff)
+                                        p99 = np.percentile(timeBuff, 99)
+                                        print('P99 Latency {:.2f} ms'.format(p99*1000))
                                         print('Instance num: %d Avg Time/Iteration: %f msec Throughput: %f fps' %(tid, avg_time, fps))
                                         break
                                     total_iteration += 1

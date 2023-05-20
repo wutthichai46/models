@@ -45,9 +45,20 @@ if [ ! -d "${DATASET_DIR}" ]; then
   exit 1
 fi
 
+
+if [ -z "${BATCH_SIZE}" ]; then
+  echo "The required environment variable BATCH_SIZE has not been set"
+  exit 1
+fi
+
 if [ -z "${PRECISION}" ]; then
   echo "The required environment variable PRECISION has not been set"
   echo "Please set PRECISION to fp32, avx-fp32, or bf16."
+  exit 1
+fi
+
+if [ -z "${MASTER_ADDR}" ]; then
+  echo "The required environment variable MASTER_ADDR has not been set"
   exit 1
 fi
 
@@ -59,10 +70,9 @@ if [[ "$PRECISION" == *"avx"* ]]; then
 fi
 
 if [[ $PRECISION == "bf16" ]]; then
-    ARGS="$ARGS --bf16 --jit"
+    ARGS="$ARGS --bf16"
     echo "running bf16 path"
 elif [[ $PRECISION == "fp32" || $PRECISION == "avx-fp32" ]]; then
-    ARGS="$ARGS --jit"
     echo "running fp32 path"
 else
     echo "The specified precision '${PRECISION}' is unsupported."
@@ -85,12 +95,25 @@ export USE_IPEX=1
 export KMP_BLOCKTIME=1
 export KMP_AFFINITY=granularity=fine,compact,1,0
 
-BATCH_SIZE=128
+
+export CCL_MNIC=global
+export CCL_MNIC_NAME=rocep56s0,rocep73s0,rocep152s0,rocep216s0 #rocep56s0,rocep59s0,rocep73s0,rocep76s0,rocep152s0,rocep155s0,rocep216s0,rocep219s0
+export CCL_MNIC_COUNT=4
+export PSM3_PRINT_STATS=0
+export FI_PROVIDER=psm3
+export CCL_ALLREDUCE=rabenseifner
+export PSM3_IDENTIFY=1
+export PSM3_IDENTIFY=1
+export PSM3_ALLOW_ROUTERS=1
+export PSM3_RDMA=1
+export PSM3_RV_MR_CACHE_SIZE=8192
+export FI_PROVIDER_PATH=/usr/lib64/libfabric
+
 
 rm -rf ${OUTPUT_DIR}/resnet50_dist_training_log_*
 
-torch_ccl_path=$(python -c "import torch; import torch_ccl; import os;  print(os.path.abspath(os.path.dirname(torch_ccl.__file__)))")
-source $torch_ccl_path/env/setvars.sh
+oneccl_bindings_for_pytorch_path=$(python -c "import torch; import oneccl_bindings_for_pytorch; import os;  print(os.path.abspath(os.path.dirname(oneccl_bindings_for_pytorch.__file__)))")
+source $oneccl_bindings_for_pytorch_path/env/setvars.sh
 
 python -m intel_extension_for_pytorch.cpu.launch \
     --use_default_allocator \
@@ -99,15 +122,19 @@ python -m intel_extension_for_pytorch.cpu.launch \
     --hostfile ${HOSTFILE} \
     --nproc_per_node ${SOCKETS} \
     --ncore_per_instance ${CORES_PER_INSTANCE} \
-    ${MODEL_DIR}/models/image_recognition/pytorch/common/main.py \
+    --logical_core_for_ccl --ccl_worker_count 8 \
+    ${MODEL_DIR}/models/image_recognition/pytorch/common/train.py \
     $ARGS \
+    --epochs $TRAINING_EPOCHS \
+    --warmup-epochs 2  \
     --ipex \
     -j 0 \
+    -b $BATCH_SIZE \
     --seed 2020 \
-    --epochs $TRAINING_EPOCHS \
-    --world-size ${NUM_RANKS} \
     --dist-backend ccl \
-    -b $BATCH_SIZE 2>&1 | tee ${OUTPUT_DIR}/resnet50_dist_training_log_${PRECISION}.log
+    --base-op=LARS \
+    --base-lr 10.5 \
+    --weight-decay 0.00005 2>&1 | tee ${OUTPUT_DIR}/resnet50_dist_training_log_${PRECISION}.log
 # For the summary of results
 wait
 

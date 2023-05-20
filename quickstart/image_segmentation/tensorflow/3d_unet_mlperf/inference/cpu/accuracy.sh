@@ -37,7 +37,11 @@ fi
 
 if [ -z "${PRECISION}" ]; then
   echo "The required environment variable PRECISION has not been set"
-  echo "Please set PRECISION to int8, fp32 or bfloat16."
+  echo "Please set PRECISION to int8, fp32, bfloat32 or bfloat16."
+  exit 1
+elif [ ${PRECISION} != "int8" ] && [ ${PRECISION} != "fp32" ] && [ ${PRECISION} != "bfloat16" ] && [ ${PRECISION} != "bfloat32" ]; then
+  echo "The specified precision '${PRECISION}' is unsupported."
+  echo "Supported precisions are: int8, fp32, bfloat32 and bfloat16"
   exit 1
 fi
 
@@ -45,10 +49,10 @@ if [ -z "${PRETRAINED_MODEL}" ]; then
     if [[ $PRECISION == "bfloat16" || $PRECISION == "fp32" ]]; then
         PRETRAINED_MODEL="${MODEL_DIR}/pretrained_model/3dunet_dynamic_ndhwc.pb"
     elif [[ $PRECISION == "int8" ]]; then
-        PRETRAINED_MODEL="${MODEL_DIR}/pretrained_model/3dunet_fused_pad_int8.pb"
+        PRETRAINED_MODEL="${MODEL_DIR}/pretrained_model/3dunet_new_int8_bf16.pb"
     else
         echo "The specified precision '${PRECISION}' is unsupported."
-        echo "Supported precisions are: int8, fp32 and bfloat16"
+        echo "Supported precisions are: int8, fp32, bfloat32 and bfloat16"
         exit 1
     fi
     if [[ ! -f "${PRETRAINED_MODEL}" ]]; then
@@ -61,7 +65,19 @@ elif [[ ! -f "${PRETRAINED_MODEL}" ]]; then
 fi
 
 MODE="inference"
-BATCH_SIZE="1"
+
+# If batch size env is not mentioned, then the workload will run with the default batch size.
+if [ -z "${BATCH_SIZE}"]; then
+  BATCH_SIZE="1"
+  echo "Running with default batch size of ${BATCH_SIZE}"
+fi
+
+# Set up env variable for bfloat32
+if [[ $PRECISION == "bfloat32" ]]; then
+  export ONEDNN_DEFAULT_FPMATH_MODE=BF16
+  PRECISION="fp32"
+fi
+
 source "${MODEL_DIR}/quickstart/common/utils.sh"
 _ht_status_spr
 _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
@@ -75,6 +91,7 @@ _command python ${MODEL_DIR}/benchmarks/launch_benchmark.py \
   --batch-size ${BATCH_SIZE} \
   --accuracy-only \
   $@ \
+  --verbose \
   -- DEBIAN_FRONTEND=noninteractive 2>&1 | tee ${OUTPUT_DIR}/3d_unet_mlperf_${PRECISION}_${MODE}_bs${BATCH_SIZE}_accuracy.log
 
 if [[ $? == 0 ]]; then
@@ -84,3 +101,4 @@ if [[ $? == 0 ]]; then
 else
   exit 1
 fi
+

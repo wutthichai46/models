@@ -100,7 +100,7 @@ you can use "SHARD_NUM" to control the shard files number. the default "SHARD_NU
 
 ### General setup
 
-Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, TorchVison, Torch-CCL, Jemalloc and TCMalloc.
+Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Miniconda and build Pytorch, IPEX, TorchVison, Torch-CCL, Jemalloc and TCMalloc.
 
 ### Model Specific Setup
 * Install dependence
@@ -111,10 +111,10 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
   conda install intel-openmp
   ```
 
-* Set ENV to use AMX if you are using SPR
-  ```
-  export DNNL_MAX_CPU_ISA=AVX512_CORE_AMX
-  ```
+* Set ENV to use fp16 AMX if you are using a supported platform
+```
+  export DNNL_MAX_CPU_ISA=AVX512_CORE_AMX_FP16
+```
 * Set ENV to use multi-nodes distributed training (no need for single-node multi-sockets)
 
   In this case, we use data-parallel distributed training and every rank will hold same model replica. The NNODES is the number of ip in the HOSTFILE. To use multi-nodes distributed training you should firstly setup the passwordless login (you can refer to [link](https://linuxize.com/post/how-to-setup-passwordless-ssh-login/)) between these nodes. 
@@ -127,12 +127,20 @@ Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and buil
 |  DataType   | Phase 1  |  Phase 2 |
 | ----------- | ----------- | ----------- |
 | FP32        | bash run_bert_pretrain_phase1.sh fp32 | bash run_bert_pretrain_phase2.sh fp32 |
+| BF32        | bash run_bert_pretrain_phase1.sh bf32 | bash run_bert_pretrain_phase2.sh bf32 |
 | BF16        | bash run_bert_pretrain_phase1.sh bf16 | bash run_bert_pretrain_phase2.sh bf16 |
+| FP16        | bash run_bert_pretrain_phase1.sh fp16 | bash run_bert_pretrain_phase2.sh fp16 |
 
 |  DataType   | Distributed Training Phase 1  |  Distributed Training Phase 2 |
 | ----------- | ----------- | ----------- |
 | FP32        | bash run_ddp_bert_pretrain_phase1.sh fp32 | bash run_ddp_bert_pretrain_phase2.sh fp32 |
+| BF32        | bash run_ddp_bert_pretrain_phase1.sh bf32 | bash run_ddp_bert_pretrain_phase2.sh bf32 |
 | BF16        | bash run_ddp_bert_pretrain_phase1.sh bf16 | bash run_ddp_bert_pretrain_phase2.sh bf16 |
+
+## Quick Start Script for fast_bert with TPP optimization 
+|  DataType   | pre-train  |  finetune|
+| ----------- | ----------- | ----------- |
+| BF16        |bash sh run_fast_bert_pretrain_8_node.sh | bash sh fast_bert_squad_finetune.sh --use_tpp --tpp_bf16 --unpad |
 ## Run the model
 
 Follow the instructions above to setup your bare metal environment, download and
@@ -151,7 +159,7 @@ export MODEL_DIR=$(pwd)
 cd quickstart/language_modeling/pytorch/bert_large/training/cpu
 git clone https://github.com/huggingface/transformers.git
 cd transformers
-git checkout v4.11.3
+git checkout v4.18.0
 git apply ../enable_optmization.diff
 pip install -e ./
 cd ..
@@ -172,6 +180,17 @@ export PRETRAINED_MODEL=/path/to/bert_large_mlperf_checkpoint/checkpoint/
 
 # Run the phase 2 quickstart script for fp32 (or bf16)
 bash run_bert_pretrain_phase2.sh fp32
+```
+
+## CheckPoint in Your Training Phase 1 or Phase 2
+
+By default it is `--skip_checkpoint` in run_bert_pretrain_phase2.sh.
+To configure checkpoint for Phase 1 or Phase 2, you could set the following args properly according to your training samples:
+
+```
+--min_samples_to_start_checkpoints // "Number of update steps until model checkpoints start saving to disk."
+--num_samples_per_checkpoint  // "Number of update steps until a model checkpoint is saved to disk."
+--log_freq  // "frequency of logging loss. If not positive, no logging is provided for training loss"
 ```
 
 <!--- 80. License -->

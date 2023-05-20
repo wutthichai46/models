@@ -1,4 +1,6 @@
-RUN source activate pytorch && \
+RUN yum install -y libpng-devel \
+        freetype-devel && \
+    source activate pytorch && \
     pip install --upgrade pip && \
     pip install --no-cache-dir https://github.com/mlperf/logging/archive/9ea0afa.zip && \
     pip install --no-cache-dir \
@@ -8,7 +10,7 @@ RUN source activate pytorch && \
         cycler==0.10.0 \
         kiwisolver==1.0.1 \
         matplotlib==2.2.2 \
-        Pillow==5.2.0 \
+        Pillow>=9.3.0 \
         pyparsing==2.2.0 \
         python-dateutil==2.7.3 \
         pytz==2018.5 \

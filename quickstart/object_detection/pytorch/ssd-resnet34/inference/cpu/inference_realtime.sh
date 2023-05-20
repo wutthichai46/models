@@ -53,9 +53,12 @@ elif [[ "$1" == "bf16" ]]; then
     echo "### running bf16 datatype"
 elif [[ "$1" == "fp32" || "$1" == "avx-fp32" ]]; then
     echo "### running fp32 datatype"
+elif [[ "$1" == "bf32" ]]; then
+    ARGS="$ARGS --bf32"
+    echo "### running bf32 datatype"
 else
     echo "The specified precision '$1' is unsupported."
-    echo "Supported precisions are: fp32, avx-fp32, bf16, int8, and avx-int8"
+    echo "Supported precisions are: fp32, avx-fp32, bf16, int8, bf32, and avx-int8"
     exit 1
 fi
 
@@ -75,7 +78,7 @@ CORES_PER_INSTANCE=4
 INSTANCES_THROUGHPUT_BENCHMARK_PER_SOCKET=`expr $CORES / $CORES_PER_INSTANCE`
 
 weight_sharing=true
-if [ -z "${WEIGHT_SHAREING}" ]; then
+if [ -z "${WEIGHT_SHARING}" ]; then
   weight_sharing=false
 else
   echo "### Running the test with runtime extension."
@@ -135,4 +138,18 @@ END   {
 sum = sum / i * INSTANCES_PER_SOCKET;
         printf("%.2f", sum);
 }')
+p99_latency=$(grep 'P99 Latency' ${OUTPUT_DIR}/latency_log* |sed -e 's/.*P99 Latency//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_THROUGHPUT_BENCHMARK_PER_SOCKET '
+BEGIN {
+    sum = 0;
+    i = 0;
+    }
+    {
+        sum = sum + $1;
+        i++;
+    }
+END   {
+    sum = sum / i;
+    printf("%.3f ms", sum);
+}')
 echo ""SSD-RN34";"latency";$1; ${BATCH_SIZE};${throughput}" | tee -a ${OUTPUT_DIR}/summary.log
+echo ""SSD-RN34";"p99_latency";$1; ${BATCH_SIZE};${p99_latency}" | tee -a ${OUTPUT_DIR}/summary.log

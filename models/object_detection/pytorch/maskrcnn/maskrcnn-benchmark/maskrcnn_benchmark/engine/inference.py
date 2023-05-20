@@ -33,12 +33,14 @@ from ..utils.comm import synchronize
 from ..utils.timer import Timer, get_time_str
 from .bbox_aug import im_detect_bbox_aug
 import intel_extension_for_pytorch as ipex
+import numpy as np
 # from maskrcnn_benchmark.engine.utils_vis import draw, make_dot
 
 
-def compute_on_dataset(model, data_loader, device, bbox_aug, timer=None, bf16=False, jit=False, iterations=-1, iter_warmup=-1, enable_profiling=False):
+def compute_on_dataset(model, data_loader, device, bbox_aug, timer=None, p99_timer=None, bf16=False, bf32=False, jit=False, iterations=-1, iter_warmup=-1, enable_profiling=False):
     model.eval()
     results_dict = {}
+    timeBuff = []
     cpu_device = torch.device("cpu")
     steps_per_epoch = len(data_loader)
     iter_warmup = max(0, iter_warmup)
@@ -47,9 +49,15 @@ def compute_on_dataset(model, data_loader, device, bbox_aug, timer=None, bf16=Fa
     print('Evaluating MaskRCNN: Steps per Epoch {} total Steps {}'.format(steps_per_epoch, total_steps))
 
     model = model.to(memory_format=torch.channels_last)
-    model.backbone = ipex.optimize(model.backbone, dtype=torch.bfloat16 if bf16 else torch.float, inplace=True)
-    model.rpn = ipex.optimize(model.rpn, dtype=torch.bfloat16 if bf16 else torch.float, inplace=True)
-    model.roi_heads = ipex.optimize(model.roi_heads, dtype=torch.bfloat16 if bf16 else torch.float, inplace=True)
+    if bf32:
+        ipex.set_fp32_math_mode(mode=ipex.FP32MathMode.BF32, device="cpu")
+        model.backbone = ipex.optimize(model.backbone, dtype=torch.float32, inplace=True, auto_kernel_selection=True)
+        model.rpn = ipex.optimize(model.rpn, dtype=torch.float32, inplace=True, auto_kernel_selection=True)
+        model.roi_heads = ipex.optimize(model.roi_heads, dtype=torch.float32, inplace=True, auto_kernel_selection=True)
+    else:
+        model.backbone = ipex.optimize(model.backbone, dtype=torch.bfloat16 if bf16 else torch.float32, inplace=True)
+        model.rpn = ipex.optimize(model.rpn, dtype=torch.bfloat16 if bf16 else torch.float32, inplace=True)
+        model.roi_heads = ipex.optimize(model.roi_heads, dtype=torch.bfloat16 if bf16 else torch.float32, inplace=True)
 
     with torch.cpu.amp.autocast(enabled=bf16), torch.no_grad():
         # generate trace model
@@ -77,12 +85,14 @@ def compute_on_dataset(model, data_loader, device, bbox_aug, timer=None, bf16=Fa
                             images = images.to(torch.bfloat16)
                         if timer and epoch * steps_per_epoch + i >= iter_warmup:
                             timer.tic()
+                            p99_timer.tic()
                         if bbox_aug:
                             output = im_detect_bbox_aug(model, images, device)
                         else:
                             output = model(images)
                         if timer and epoch * steps_per_epoch + i >= iter_warmup:
                             timer.toc()
+                            timeBuff.append(p99_timer.toc())
                         output = [o.to(cpu_device) for o in output]
                         results_dict.update(
                             {img_id: result for img_id, result in zip(image_ids, output)}
@@ -90,7 +100,7 @@ def compute_on_dataset(model, data_loader, device, bbox_aug, timer=None, bf16=Fa
                         pbar.update(1)
         if enable_profiling:
             print(prof.key_averages().table(sort_by="self_cpu_time_total"))
-    return results_dict
+    return results_dict, timeBuff
 
 
 def _accumulate_predictions_from_multiple_gpus(predictions_per_gpu):
@@ -128,6 +138,7 @@ def inference(
         expected_results_sigma_tol=4,
         output_folder=None,
         bf16=False,
+        bf32=False,
         jit=False,
         iterations=-1,
         iter_warmup=-1,
@@ -141,8 +152,9 @@ def inference(
     logger.info("Start evaluation on {} dataset({} images).".format(dataset_name, len(dataset)))
     total_timer = Timer()
     inference_timer = Timer()
+    p99 = Timer()
     total_timer.tic()
-    predictions = compute_on_dataset(model, data_loader, device, bbox_aug, inference_timer, bf16, jit, iterations, iter_warmup, enable_profiling)
+    predictions, timeBuff = compute_on_dataset(model, data_loader, device, bbox_aug, inference_timer, p99, bf16, bf32, jit, iterations, iter_warmup, enable_profiling)
     # wait for all processes to complete before measuring the time
     synchronize()
     total_time = total_timer.toc()
@@ -151,6 +163,9 @@ def inference(
     if iterations == -1:
         iterations = len(data_loader)
 
+    timeBuff_output = np.asarray(timeBuff)
+    p99 = np.percentile(timeBuff_output, 99)
+    logger.info('P99 Latency {:.2f} ms'.format(p99*1000))
     logger.info(
         "Total run time: {} ({} s / iter per device, on {} devices)".format(
             total_time_str, total_time * num_devices / iterations, num_devices

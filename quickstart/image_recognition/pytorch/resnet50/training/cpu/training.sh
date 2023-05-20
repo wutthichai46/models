@@ -61,10 +61,15 @@ if [[ "$PRECISION" == *"avx"* ]]; then
 fi
 
 if [[ $PRECISION == "bf16" ]]; then
-    ARGS="$ARGS --bf16 --jit"
+    ARGS="$ARGS --bf16"
     echo "running bf16 path"
+elif [[ $PRECISION == "bf32" ]]; then
+    ARGS="$ARGS --bf32"
+    echo "running bf32 path"
+elif [[ $PRECISION == "fp16" ]]; then
+    ARGS="$ARGS --fp16"
+    echo "running fp16 path"
 elif [[ $PRECISION == "fp32" || $PRECISION == "avx-fp32" ]]; then
-    ARGS="$ARGS --jit"
     echo "running fp32 path"
 else
     echo "The specified precision '${PRECISION}' is unsupported."
@@ -90,7 +95,7 @@ rm -rf ./resnet50_training_log_*
 
 python -m intel_extension_for_pytorch.cpu.launch \
     --use_default_allocator \
-    --ninstances ${SOCKETS} \
+    --ninstances 1 \
     --ncore_per_instance ${CORES_PER_INSTANCE} \
     --log_path=${OUTPUT_DIR} \
     --log_file_prefix="./resnet50_training_log_${PRECISION}" \
@@ -100,6 +105,8 @@ python -m intel_extension_for_pytorch.cpu.launch \
     -j 0 \
     --seed 2020 \
     --epochs $TRAINING_EPOCHS \
+    --train-no-eval \
+    -w 50 \
     -b $BATCH_SIZE
 
 # For the summary of results

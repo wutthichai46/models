@@ -279,4 +279,3 @@ class model_infer:
 if __name__ == "__main__":
   infer = model_infer()
   infer.run()
-

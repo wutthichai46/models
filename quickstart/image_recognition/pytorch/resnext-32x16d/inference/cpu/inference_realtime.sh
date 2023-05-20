@@ -51,10 +51,13 @@ if [[ $PRECISION == "int8" || $PRECISION == "avx-int8" ]]; then
     echo "running int8 path"
     ARGS="$ARGS --int8 --configure-dir ${MODEL_DIR}/models/image_recognition/pytorch/common/resnext101_configure_sym.json"
 elif [[ $PRECISION == "bf16" ]]; then
-    ARGS="$ARGS --bf16 --jit"
+    ARGS="$ARGS --bf16"
     echo "running bf16 path"
+elif [[ $PRECISION == "bf32" ]]; then
+    ARGS="$ARGS --bf32"
+    echo "running bf32 path"
 elif [[ $PRECISION == "fp32" || $PRECISION == "avx-fp32" ]]; then
-    ARGS="$ARGS --jit"
+    ARGS="$ARGS"
     echo "running fp32 path"
 else
     echo "The specified precision '${PRECISION}' is unsupported."
@@ -62,49 +65,76 @@ else
     exit 1
 fi
 
-CORES=`lscpu | grep Core | awk '{print $4}'`
-SOCKETS=`lscpu | grep Socket | awk '{print $2}'`
-
-CORES_PER_INSTANCE=4
-
 export DNNL_PRIMITIVE_CACHE_CAPACITY=1024
 export KMP_BLOCKTIME=1
 export KMP_AFFINITY=granularity=fine,compact,1,0
-export OMP_NUM_THREADS=$CORES_PER_INSTANCE
 
-NUMBER_INSTANCE=`expr $CORES / $CORES_PER_INSTANCE`
+source "${MODEL_DIR}/quickstart/common/utils.sh"
+_get_platform_type
+MULTI_INSTANCE_ARGS=""
+if [[ ${PLATFORM} == "linux" ]]; then
+    pip list | grep intel-extension-for-pytorch
+    if [[ "$?" == 0 ]]; then
+        CORES=`lscpu | grep Core | awk '{print $4}'`
+        SOCKETS=`lscpu | grep Socket | awk '{print $2}'`
+        CORES_PER_INSTANCE=4
+        export OMP_NUM_THREADS=$CORES_PER_INSTANCE
 
-python -m intel_extension_for_pytorch.cpu.launch \
-    --use_default_allocator \
-    --ninstance ${SOCKETS} \
-    --log_path=${OUTPUT_DIR} \
-    --log_file_prefix="./resnext101_latency_log_${PRECISION}" \
+        NUMBER_INSTANCE=`expr $CORES / $CORES_PER_INSTANCE`
+        MULTI_INSTANCE_ARGS="-m intel_extension_for_pytorch.cpu.launch \
+        --use_default_allocator --ninstance ${SOCKETS} --log_path=${OUTPUT_DIR} \
+        --log_file_prefix="./resnext101_latency_log_${PRECISION}""
+
+        # in case IPEX is used, we set ipex arg
+        if [[ $PRECISION == "int8" || $PRECISION == "avx-int8" ]]; then
+            ARGS="${ARGS} --ipex --weight-sharing --number-instance $NUMBER_INSTANCE"
+        else
+            ARGS="${ARGS} --ipex --jit --weight-sharing --number-instance $NUMBER_INSTANCE"
+	fi
+        echo "Running using ${ARGS} args ..."
+    fi
+fi
+
+python ${MULTI_INSTANCE_ARGS} \
     ${MODEL_DIR}/models/image_recognition/pytorch/common/main.py \
     $ARGS \
-    --ipex \
     -j 0 \
-    -b $BATCH_SIZE \
-    --weight-sharing \
-    --number-instance $NUMBER_INSTANCE
+    -b $BATCH_SIZE
 
 wait
 
-TOTAL_CORES=`expr $CORES \* $SOCKETS`
-INSTANCES=`expr $TOTAL_CORES / $CORES_PER_INSTANCE`
-INSTANCES_PER_SOCKET=`expr $INSTANCES / $SOCKETS`
+if [[ ${PLATFORM} == "linux" ]]; then
+    TOTAL_CORES=`expr $CORES \* $SOCKETS`
+    INSTANCES=`expr $TOTAL_CORES / $CORES_PER_INSTANCE`
+    INSTANCES_PER_SOCKET=`expr $INSTANCES / $SOCKETS`
 
-throughput=$(grep 'Throughput:' ${OUTPUT_DIR}/resnext101_latency_log* |sed -e 's/.*Throughput//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_PER_SOCKET '
+    throughput=$(grep 'Throughput:' ${OUTPUT_DIR}/resnext101_latency_log* |sed -e 's/.*Throughput//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_PER_SOCKET '
+    BEGIN {
+            sum = 0;
+    i = 0;
+        }
+        {
+            sum = sum + $1;
+    i++;
+        }
+    END   {
+    sum = sum / i * INSTANCES_PER_SOCKET;
+            printf("%.2f", sum);
+    }')
+    
+    p99_latency=$(grep 'P99 Latency' ${OUTPUT_DIR}/resnext101_latency_log* |sed -e 's/.*P99 Latency//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_PER_SOCKET '
 BEGIN {
-        sum = 0;
-i = 0;
-      }
-      {
+    sum = 0;
+    i = 0;
+    }
+    {
         sum = sum + $1;
-i++;
-      }
+        i++;
+    }
 END   {
-sum = sum / i * INSTANCES_PER_SOCKET;
-        printf("%.2f", sum);
+    sum = sum / i;
+    printf("%.3f ms", sum);
 }')
-
-echo "resnext101;"latency";${PRECISION};${BATCH_SIZE};${throughput}" | tee -a ${OUTPUT_DIR}/summary.log
+    echo "resnext101;"latency";${PRECISION};${BATCH_SIZE};${throughput}" | tee -a ${OUTPUT_DIR}/summary.log
+    echo "resnext101;"p99_latency";${PRECISION};${BATCH_SIZE};${p99_latency}" | tee -a ${OUTPUT_DIR}/summary.log
+fi

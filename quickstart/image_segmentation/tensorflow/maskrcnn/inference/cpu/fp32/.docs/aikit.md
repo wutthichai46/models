@@ -22,7 +22,7 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
         <li>git
         <li>wget
         <li>IPython[all]
-        <li>pillow>=8.1.2
+        <li>pillow>=9.3.0
         <li>cython
         <li>h5py==2.10.0
         <li>imgaug
@@ -68,8 +68,10 @@ Once the environment variables are all set, you can run the
 cd models
 
 export DATASET_DIR=<path to the dataset>
-export OUTPUT_DIR=<directory where log files will be written>
+export OUTPUT_DIR=<path to the directory where log files will be written>
 export MODEL_SRC_DIR=<path to the Mask RCNN models repo with pre-trained model>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+export BATCH_SIZE=<customized batch size value>
 
 ./quickstart/image_segmentation/tensorflow/maskrcnn/inference/cpu/fp32/fp32_inference.sh
 ```

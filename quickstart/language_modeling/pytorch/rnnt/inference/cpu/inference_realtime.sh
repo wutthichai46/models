@@ -46,6 +46,9 @@ ARGS=""
 if [ "$1" == "bf16" ]; then
     ARGS="$ARGS --mix-precision"
     echo "### running bf16 datatype"
+elif [ "$1" == "bf32" ]; then
+    ARGS="$ARGS --bf32"
+    echo "### running bf32 datatype"
 else
     echo "### running fp32 datatype"
 fi
@@ -62,6 +65,8 @@ rm -rf ${OUTPUT_DIR}/rnnt_${PRECISION}_inference_realtime*
 python -m intel_extension_for_pytorch.cpu.launch \
     --use_default_allocator \
     --latency_mode \
+    --log_path ${OUTPUT_DIR} \
+    --log_file_prefix rnnt_${PRECISION}_inference_realtime \
     ${MODEL_DIR}/models/language_modeling/pytorch/rnnt/inference/cpu/inference.py \
     --dataset_dir ${DATASET_DIR}/dataset/LibriSpeech/ \
     --val_manifest ${DATASET_DIR}/dataset/LibriSpeech/librispeech-dev-clean-wav.json \
@@ -71,7 +76,7 @@ python -m intel_extension_for_pytorch.cpu.launch \
     --ipex \
     --jit \
     --warm_up 10 \
-    $ARGS 2>&1 | tee ${OUTPUT_DIR}/rnnt_${PRECISION}_inference_realtime.log
+    $ARGS
 
 # For the summary of results
 wait
@@ -94,4 +99,18 @@ END   {
 sum = sum / i * INSTANCES_PER_SOCKET;
         printf("%.2f", sum);
 }')
+p99_latency=$(grep 'P99 Latency' ${OUTPUT_DIR}/rnnt_${PRECISION}_inference_realtime* |sed -e 's/.*P99 Latency//;s/[^0-9.]//g' |awk -v INSTANCES_PER_SOCKET=$INSTANCES_THROUGHPUT_BENCHMARK_PER_SOCKET '
+BEGIN {
+    sum = 0;
+    i = 0;
+    }
+    {
+        sum = sum + $1;
+        i++;
+    }
+END   {
+    sum = sum / i;
+    printf("%.3f ms", sum);
+}')
 echo ""RNN-T";"latency";$1; ${BATCH_SIZE};${throughput}" | tee -a ${OUTPUT_DIR}/summary.log
+echo ""RNN-T";"p99_latency";$1; ${BATCH_SIZE};${p99_latency}" | tee -a ${OUTPUT_DIR}/summary.log

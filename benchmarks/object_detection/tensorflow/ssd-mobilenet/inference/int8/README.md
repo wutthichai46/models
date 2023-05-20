@@ -49,7 +49,7 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
         <li>jupyter
         <li>lxml
         <li>matplotlib
-        <li>pillow>=8.1.2
+        <li>pillow>=9.3.0
         <li>pycocotools
         <li>Activate the `tensorflow` conda environment
         <pre>conda activate tensorflow</pre>
@@ -69,7 +69,7 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
         <li>jupyter
         <li>lxml
         <li>matplotlib
-        <li>pillow>=8.1.2
+        <li>pillow>=9.3.0
         <li>pycocotools
         <li>A clone of the Model Zoo repo<br />
         <pre>git clone https://github.com/IntelAI/models.git</pre>
@@ -78,14 +78,14 @@ using [AI Kit](/docs/general/tensorflow/AIKit.md):
     <td>
       <p>To run without AI Kit on Windows you will need:</p>
       <ul>
-        <li><a href="/docs/general/tensorflow/Windows.md">Intel Model Zoo on Windows Systems prerequisites</a>
+        <li><a href="/docs/general/Windows.md">Intel Model Zoo on Windows Systems prerequisites</a>
         <li>build-essential
         <li>Cython
         <li>contextlib2
         <li>jupyter
         <li>lxml
         <li>matplotlib
-        <li>pillow>=8.1.2
+        <li>pillow>=9.3.0
         <li>pycocotools
         <li>A clone of the Model Zoo repo<br />
         <pre>git clone https://github.com/IntelAI/models.git</pre>
@@ -116,7 +116,9 @@ cd models
 
 export PRETRAINED_MODEL=<path to the pretrained model pb file>
 export DATASET_DIR=<path to the coco tf record file>
-export OUTPUT_DIR=<directory where log files will be written>
+export OUTPUT_DIR=<path to the directory where log files will be written>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+export BATCH_SIZE=<customized batch size value>
 
 ./quickstart/object_detection/tensorflow/ssd-mobilenet/inference/cpu/int8/<script name>.sh
 ```
@@ -130,6 +132,8 @@ cd models
 set PRETRAINED_MODEL=<path to the pretrained model pb file>
 set DATASET_DIR=<path to the coco tf record file>
 set OUTPUT_DIR=<directory where log files will be written>
+# For a custom batch size, set env var `BATCH_SIZE` or it will run with a default value.
+set BATCH_SIZE=<customized batch size value>
 
 bash quickstart\object_detection\tensorflow\ssd-mobilenet\inference\cpu\int8\<script name>.sh
 ```

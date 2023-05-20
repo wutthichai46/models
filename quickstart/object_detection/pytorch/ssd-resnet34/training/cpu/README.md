@@ -6,14 +6,14 @@ This document has instructions for running SSD-ResNet34 training using Intel-opt
 ## Bare Metal
 ### General setup
 
-Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Conda and build Pytorch, IPEX, TorchVison, Torch-CCL and Jemalloc.
+Follow [link](/docs/general/pytorch/BareMetalSetup.md) to install Miniconda and build Pytorch, IPEX, TorchVison, Torch-CCL and Jemalloc.
 
 ### Model Specific Setup
 * Install dependencies
   ```
   pip install --no-cache-dir cython
   pip install --no-cache-dir https://github.com/mlperf/logging/archive/9ea0afa.zip
-  pip install matplotlib Pillow pycocotools
+  pip install matplotlib Pillow pycocotools defusedxml
   pip install --no-cache-dir pytz==2018.5
   ```
 
@@ -69,12 +69,14 @@ bash download_dataset.sh
 | ----------- | ----------- | ----------- |
 | FP32        | bash throughput.sh fp32 | bash accuracy.sh fp32 |
 | BF16        | bash throughput.sh bf16 | bash accuracy.sh bf16 |
+| BF32        | bash throughput.sh bf32 | bash accuracy.sh bf32 |
 
 |           Distributed Training          |
 |  DataType   | Throughput  |   Accuracy  |
 | ----------- | ----------- | ----------- |
 | FP32        | bash throughput_dist.sh fp32 | bash accuracy_dist.sh fp32 |
 | BF16        | bash throughput_dist.sh bf16 | bash accuracy_dist.sh bf16 |
+| BF32        | bash throughput_dist.sh bf32 | bash accuracy_dist.sh bf32 |
 
 ## Run the model
 
